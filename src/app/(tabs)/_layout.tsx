@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/theme';
 
@@ -16,6 +17,9 @@ function tabIcon(name: IconName) {
 
 /** 하단 탭 4개: 홈 / 기록 / 신발 / 내 정보 */
 export default function TabLayout() {
+  // 안드로이드 하단 버튼(내비게이션 바) 높이만큼 탭 바를 키워야 글씨가 가려지지 않는다.
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -26,8 +30,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
-          minHeight: 72,
-          paddingTop: 6,
+          height: 72 + insets.bottom,
+          paddingTop: 8,
         },
       }}>
       <Tabs.Screen name="index" options={{ title: '홈', tabBarIcon: tabIcon('home') }} />
