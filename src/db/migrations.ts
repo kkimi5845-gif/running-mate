@@ -101,6 +101,15 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE inbody_logs ADD COLUMN photo_uri TEXT;
     `,
   },
+  {
+    version: 3,
+    description: '러닝 일시정지·재개 시간 계산용 컬럼',
+    sql: `
+      -- 지금 달리는 구간이 시작된 시각(밀리초). 일시정지 중이거나 끝난 기록은 NULL.
+      -- 경과 시간 = duration_sec + (지금 - active_since)
+      ALTER TABLE runs ADD COLUMN active_since INTEGER;
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

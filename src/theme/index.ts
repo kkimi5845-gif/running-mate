@@ -33,6 +33,7 @@ export const fontSize = {
   title: 24,
   heading: 30,
   number: 44, // 거리·시간 같은 핵심 숫자
+  hero: 80, // 러닝 중 거리처럼 가장 중요한 숫자 하나
 } as const;
 
 export const spacing = {

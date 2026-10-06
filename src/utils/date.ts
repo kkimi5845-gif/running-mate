@@ -23,3 +23,15 @@ export function formatDateShort(iso: string): string {
   const [, m, d] = iso.split('-').map(Number);
   return `${m}.${d}`;
 }
+
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** ISO 시각 → '10월 7일 (수) 오전 7:30 러닝' */
+export function formatRunTitle(iso: string): string {
+  const d = new Date(iso);
+  const h = d.getHours();
+  const ampm = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]}) ${ampm} ${h12}:${mm} 러닝`;
+}

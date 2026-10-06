@@ -1,3 +1,6 @@
+// 백그라운드 위치 작업은 앱 시작 시 등록돼야 하므로 가장 먼저 불러온다.
+import '@/location/tracking';
+
 import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
@@ -39,6 +42,8 @@ export default function RootLayout() {
         <Stack.Screen name="profile-edit" />
         <Stack.Screen name="inbody/index" options={{ headerShown: true, title: '인바디 기록' }} />
         <Stack.Screen name="inbody/edit" options={{ headerShown: true, title: '인바디 입력' }} />
+        <Stack.Screen name="run/active" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="run/[id]" options={{ headerShown: true, title: '러닝 기록' }} />
       </Stack>
     </SQLiteProvider>
   );

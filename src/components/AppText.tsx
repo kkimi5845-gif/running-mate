@@ -2,7 +2,7 @@ import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { colors, fontSize } from '@/theme';
 
-type Variant = 'body' | 'bodyLarge' | 'caption' | 'title' | 'heading' | 'number';
+type Variant = 'body' | 'bodyLarge' | 'caption' | 'title' | 'heading' | 'number' | 'hero';
 
 type Props = TextProps & {
   variant?: Variant;
@@ -55,6 +55,12 @@ const styles = StyleSheet.create({
   number: {
     fontSize: fontSize.number,
     lineHeight: fontSize.number * 1.2,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  hero: {
+    fontSize: fontSize.hero,
+    lineHeight: fontSize.hero * 1.1,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
