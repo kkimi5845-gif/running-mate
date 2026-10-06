@@ -1,9 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
-import type { ComponentProps } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState, type ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { getProfile } from '@/db/profile';
 import { colors } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -19,6 +22,16 @@ function tabIcon(name: IconName) {
 export default function TabLayout() {
   // 안드로이드 하단 버튼(내비게이션 바) 높이만큼 탭 바를 키워야 글씨가 가려지지 않는다.
   const insets = useSafeAreaInsets();
+  const db = useSQLiteContext();
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getProfile(db).then((p) => setHasProfile(p !== null));
+  }, [db]);
+
+  // 프로필이 없으면(앱을 처음 켰으면) 온보딩 질문부터
+  if (hasProfile === null) return null;
+  if (!hasProfile) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs

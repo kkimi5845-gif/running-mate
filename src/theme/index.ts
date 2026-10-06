@@ -22,6 +22,8 @@ export const colors = {
   success: '#1F7A3A',
   warning: '#B25E00',
   danger: '#C62828',
+
+  photoBackdrop: '#000000', // 사진 크게 보기 배경
 } as const;
 
 export const fontSize = {

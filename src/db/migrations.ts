@@ -94,6 +94,13 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    description: '인바디 결과지 사진 첨부',
+    sql: `
+      ALTER TABLE inbody_logs ADD COLUMN photo_uri TEXT;
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

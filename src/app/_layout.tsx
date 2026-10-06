@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { DATABASE_NAME, migrate } from '@/db';
-import { colors, spacing } from '@/theme';
+import { colors, fontSize, spacing } from '@/theme';
 
 export default function RootLayout() {
   const [dbError, setDbError] = useState<Error | null>(null);
@@ -29,8 +29,16 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontSize: fontSize.title, fontWeight: '700' },
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.background },
         }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="profile-edit" />
+        <Stack.Screen name="inbody/index" options={{ headerShown: true, title: '인바디 기록' }} />
+        <Stack.Screen name="inbody/edit" options={{ headerShown: true, title: '인바디 입력' }} />
       </Stack>
     </SQLiteProvider>
   );
