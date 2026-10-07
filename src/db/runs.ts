@@ -87,10 +87,10 @@ export async function listFinishedRuns(db: SQLiteDatabase): Promise<Run[]> {
   return rows.map(toRun);
 }
 
-export async function createRun(db: SQLiteDatabase, now: number): Promise<number> {
+export async function createRun(db: SQLiteDatabase, now: number, shoeId: number | null = null): Promise<number> {
   const result = await db.runAsync(
-    `INSERT INTO runs (status, started_at, active_since) VALUES ('recording', ?, ?)`,
-    [new Date(now).toISOString(), now],
+    `INSERT INTO runs (status, started_at, active_since, shoe_id) VALUES ('recording', ?, ?, ?)`,
+    [new Date(now).toISOString(), now, shoeId],
   );
   return result.lastInsertRowId;
 }

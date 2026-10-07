@@ -117,6 +117,13 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE run_points ADD COLUMN exclude_reason TEXT;
     `,
   },
+  {
+    version: 5,
+    description: '신발 등록 전에 이미 신고 달린 거리',
+    sql: `
+      ALTER TABLE shoes ADD COLUMN initial_km REAL NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

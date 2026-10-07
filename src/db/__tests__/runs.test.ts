@@ -2,10 +2,7 @@
  * 러닝 기록 DB 로직을 실제 SQLite(node:sqlite)로 확인한다.
  * expo-sqlite와 같은 모양의 함수만 흉내 낸 작은 어댑터를 쓴다.
  */
-import { DatabaseSync } from 'node:sqlite';
-import type { SQLiteDatabase } from 'expo-sqlite';
-
-import { MIGRATIONS } from '../migrations';
+import { makeTestDb as makeDb } from '../testing/nodeDb';
 import {
   createRun,
   elapsedSec,
@@ -19,33 +16,6 @@ import {
   resumeRun,
   type IncomingLocation,
 } from '../runs';
-
-type Params = (string | number | null)[];
-
-function makeDb(): SQLiteDatabase {
-  const raw = new DatabaseSync(':memory:');
-  raw.exec('PRAGMA foreign_keys = ON;');
-  for (const m of MIGRATIONS) raw.exec(m.sql);
-  const db = {
-    getFirstAsync: async (sql: string, params: Params = []) => raw.prepare(sql).get(...params) ?? null,
-    getAllAsync: async (sql: string, params: Params = []) => raw.prepare(sql).all(...params),
-    runAsync: async (sql: string, params: Params = []) => {
-      const r = raw.prepare(sql).run(...params);
-      return { lastInsertRowId: Number(r.lastInsertRowid), changes: Number(r.changes) };
-    },
-    withTransactionAsync: async (task: () => Promise<void>) => {
-      raw.exec('BEGIN');
-      try {
-        await task();
-        raw.exec('COMMIT');
-      } catch (e) {
-        raw.exec('ROLLBACK');
-        throw e;
-      }
-    },
-  };
-  return db as unknown as SQLiteDatabase;
-}
 
 const T0 = Date.UTC(2026, 9, 7, 0, 0, 0);
 // 0.00005도 ≈ 5.6m. 1초마다 5.6m ≈ 3분/km 속도

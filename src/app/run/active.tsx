@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
 import { GpsDebugPanel } from '@/components/GpsDebugPanel';
+import { ShoePicker } from '@/components/ShoePicker';
 import {
   createRun,
   deleteRun,
@@ -24,6 +25,7 @@ import {
   type Run,
   type StoredPoint,
 } from '@/db/runs';
+import { getLastShoeId, listShoes, setLastShoeId, type Shoe } from '@/db/shoes';
 import { formatDuration, formatKm, formatPace } from '@/location/format';
 import { averagePaceSecPerKm, CURRENT_PACE_WINDOW_MS, currentPaceSecPerKm, MAX_ACCURACY_M } from '@/location/geo';
 import { currentTrackingMode, isExpoGo, startTracking, stopTracking, type TrackingMode } from '@/location/tracking';
@@ -41,6 +43,29 @@ export default function ActiveRunScreen() {
   const [recent, setRecent] = useState<StoredPoint[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
+  const [shoes, setShoes] = useState<Shoe[]>([]);
+  const [shoeId, setShoeId] = useState<number | null>(null);
+  const shoeChosen = useRef(false);
+
+  // 시작 전 신발 목록. 신발 등록 화면에서 돌아와도 다시 읽는다.
+  // 기본 선택: 마지막으로 고른 신발 → 신발이 하나뿐이면 그 신발 → 선택 안 함
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const list = (await listShoes(db)).filter((s) => !s.retired);
+        setShoes(list);
+        if (shoeChosen.current) return;
+        const last = await getLastShoeId(db);
+        if (last !== null && list.some((s) => s.id === last)) setShoeId(last);
+        else if (list.length === 1) setShoeId(list[0].id);
+      })();
+    }, [db]),
+  );
+
+  const chooseShoe = (id: number | null) => {
+    shoeChosen.current = true;
+    setShoeId(id);
+  };
 
   // 처음 열 때: 진행 중인 러닝이 있으면 이어서 보여주고, 위치 기록이 꺼져 있으면 다시 켠다.
   useEffect(() => {
@@ -112,7 +137,8 @@ export default function ActiveRunScreen() {
         return;
       }
       setMode(result.mode);
-      const id = await createRun(db, Date.now());
+      const id = await createRun(db, Date.now(), shoeId);
+      await setLastShoeId(db, shoeId);
       setRun(await getRun(db, id));
     } catch (e) {
       Alert.alert('시작하지 못했어요', String(e));
@@ -182,6 +208,17 @@ export default function ActiveRunScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <Header onClose={() => router.back()} />
           <AppText variant="heading">러닝을 시작할까요?</AppText>
+          <Card>
+            <AppText variant="title">오늘 신을 신발</AppText>
+            {shoes.length > 0 ? (
+              <ShoePicker shoes={shoes} selectedId={shoeId} onSelect={chooseShoe} />
+            ) : (
+              <AppText variant="caption">
+                등록된 신발이 없어요. 신발을 등록하면 달린 거리가 신발에 자동으로 쌓여요.
+              </AppText>
+            )}
+            <BigButton label="+ 신발 등록" variant="outline" onPress={() => router.push('/shoe/edit')} />
+          </Card>
           <Card>
             <AppText variant="title">위치 권한 안내</AppText>
             <AppText>

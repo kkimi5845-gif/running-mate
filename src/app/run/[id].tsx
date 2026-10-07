@@ -10,10 +10,14 @@ import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
 import { GpsDebugPanel } from '@/components/GpsDebugPanel';
 import { RouteMap } from '@/components/RouteMap';
+import { ShoeStatusTag, ShoeThumb } from '@/components/ShoeBadge';
+import { ShoePicker } from '@/components/ShoePicker';
 import { deleteRun, getRun, getRunPoints, type Run, type StoredPoint } from '@/db/runs';
+import { listShoes, setLastShoeId, setRunShoe, type Shoe } from '@/db/shoes';
 import { formatDuration, formatKm, formatPace } from '@/location/format';
 import { averagePaceSecPerKm } from '@/location/geo';
 import { buildGpx } from '@/location/gpx';
+import { statusMessage } from '@/shoes/status';
 import { colors, spacing } from '@/theme';
 import { formatRunTitle, toISODate } from '@/utils/date';
 
@@ -27,13 +31,24 @@ export default function RunDetailScreen() {
   const [run, setRun] = useState<Run | null | undefined>(undefined);
   const [points, setPoints] = useState<StoredPoint[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [shoes, setShoes] = useState<Shoe[]>([]);
+  const [changingShoe, setChangingShoe] = useState(false);
 
   useEffect(() => {
     (async () => {
       setRun(await getRun(db, runId));
       setPoints(await getRunPoints(db, runId, { onlyUsed: true }));
+      setShoes(await listShoes(db));
     })();
   }, [db, runId]);
+
+  const changeShoe = async (shoeId: number | null) => {
+    await setRunShoe(db, runId, shoeId);
+    if (isFresh) await setLastShoeId(db, shoeId); // 방금 끝낸 러닝이면 다음 기본값도 바꾼다
+    setRun(await getRun(db, runId));
+    setShoes(await listShoes(db));
+    setChangingShoe(false);
+  };
 
   if (run === undefined) return null;
   if (run === null) {
@@ -43,6 +58,11 @@ export default function RunDetailScreen() {
       </View>
     );
   }
+
+  const shoe = shoes.find((s) => s.id === run.shoeId) ?? null;
+  // 고를 수 있는 신발: 신는 신발 + (보관했더라도) 지금 연결된 신발
+  const pickable = shoes.filter((s) => !s.retired || s.id === run.shoeId);
+  const shoeNotice = shoe && !shoe.retired ? statusMessage(shoe.status, shoe.replaceKm - shoe.totalKm) : null;
 
   const pace = averagePaceSecPerKm(run.distanceM, run.durationSec);
   const tooShort = run.distanceM < 100;
@@ -111,6 +131,38 @@ export default function RunDetailScreen() {
         <Stat label="평균 페이스" value={formatPace(pace)} />
       </View>
 
+      <Card>
+        <AppText variant="title">신은 신발</AppText>
+        {changingShoe ? (
+          <ShoePicker shoes={pickable} selectedId={run.shoeId} onSelect={changeShoe} />
+        ) : shoe ? (
+          <View style={styles.shoeRow}>
+            <ShoeThumb uri={shoe.photoUri} size={48} />
+            <View style={styles.shoeMain}>
+              <AppText bold>{shoe.name}</AppText>
+              <AppText variant="caption">
+                누적 {Math.round(shoe.totalKm)} / {shoe.replaceKm}km
+              </AppText>
+            </View>
+            {shoe.status !== 'ok' && <ShoeStatusTag status={shoe.status} />}
+          </View>
+        ) : (
+          <AppText variant="caption">선택한 신발이 없어요.</AppText>
+        )}
+        {shoeNotice && !changingShoe && (
+          <AppText bold color={shoe?.status === 'replace' ? colors.danger : colors.warning}>
+            {shoeNotice}
+          </AppText>
+        )}
+        {pickable.length > 0 && (
+          <BigButton
+            label={changingShoe ? '닫기' : shoe ? '신발 바꾸기' : '신발 고르기'}
+            variant="outline"
+            onPress={() => setChangingShoe((v) => !v)}
+          />
+        )}
+      </Card>
+
       {tooShort && (
         <Card>
           <AppText color={colors.warning} bold>
@@ -158,5 +210,14 @@ const styles = StyleSheet.create({
   stat: {
     flex: 1,
     alignItems: 'center',
+  },
+  shoeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  shoeMain: {
+    flex: 1,
+    gap: 2,
   },
 });

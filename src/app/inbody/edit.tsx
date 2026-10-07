@@ -23,7 +23,7 @@ import { Disclaimer } from '@/components/Disclaimer';
 import { NumberField } from '@/components/NumberField';
 import { deleteInbody, getInbody, insertInbody, latestInbody, updateInbody } from '@/db/inbody';
 import { METRICS, parseNumber, type MetricKey } from '@/inbody/metrics';
-import { deleteInbodyPhoto, pickInbodyPhoto, type PickSource } from '@/inbody/photo';
+import { deletePhoto, permissionMessage, pickPhoto, type PickSource } from '@/photos/photo';
 import { colors, radius, spacing } from '@/theme';
 import { formatDateLong, fromISODate, toISODate } from '@/utils/date';
 
@@ -81,27 +81,22 @@ export default function InbodyEditScreen() {
 
     return () => {
       if (!saved.current && currentPhoto.current !== originalPhoto.current) {
-        deleteInbodyPhoto(currentPhoto.current);
+        deletePhoto('inbody', currentPhoto.current);
       }
     };
   }, [db, editingId]);
 
   const addPhoto = async (source: PickSource) => {
     try {
-      const result = await pickInbodyPhoto(source);
+      const result = await pickPhoto('inbody', source);
       if (!result.ok) {
         if (result.reason === 'denied') {
-          Alert.alert(
-            '사진 권한이 필요해요',
-            source === 'camera'
-              ? '휴대폰 설정에서 카메라 사용을 허용해 주세요.'
-              : '휴대폰 설정에서 사진 접근을 허용해 주세요.',
-          );
+          Alert.alert('사진 권한이 필요해요', permissionMessage(source));
         }
         return;
       }
       // 이번에 새로 고른 사진을 다시 바꾸면, 바로 전 사진 파일은 지운다
-      if (photoUri && photoUri !== originalPhoto.current) deleteInbodyPhoto(photoUri);
+      if (photoUri && photoUri !== originalPhoto.current) deletePhoto('inbody', photoUri);
       setPhotoUri(result.uri);
     } catch (e) {
       Alert.alert('사진을 가져오지 못했어요', String(e));
@@ -109,7 +104,7 @@ export default function InbodyEditScreen() {
   };
 
   const removePhoto = () => {
-    if (photoUri && photoUri !== originalPhoto.current) deleteInbodyPhoto(photoUri);
+    if (photoUri && photoUri !== originalPhoto.current) deletePhoto('inbody', photoUri);
     setPhotoUri(null);
   };
 
@@ -155,7 +150,7 @@ export default function InbodyEditScreen() {
       saved.current = true;
       // 사진을 바꿨거나 뺐다면 예전 사진 파일 정리
       if (originalPhoto.current && originalPhoto.current !== photoUri) {
-        deleteInbodyPhoto(originalPhoto.current);
+        deletePhoto('inbody', originalPhoto.current);
       }
       router.back();
     } catch (e) {
@@ -174,8 +169,8 @@ export default function InbodyEditScreen() {
         onPress: async () => {
           await deleteInbody(db, editingId);
           saved.current = true;
-          deleteInbodyPhoto(originalPhoto.current);
-          if (photoUri !== originalPhoto.current) deleteInbodyPhoto(photoUri);
+          deletePhoto('inbody', originalPhoto.current);
+          if (photoUri !== originalPhoto.current) deletePhoto('inbody', photoUri);
           router.back();
         },
       },
