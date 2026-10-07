@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import type { CourseCandidate } from '@/engine/course';
 import { evaluatePoint, type GeoPoint } from '@/location/geo';
 
 export type RunStatus = 'recording' | 'paused' | 'finished';
@@ -85,6 +86,32 @@ export async function listFinishedRuns(db: SQLiteDatabase): Promise<Run[]> {
     `SELECT ${RUN_COLUMNS} FROM runs WHERE status = 'finished' ORDER BY started_at DESC`,
   );
   return rows.map(toRun);
+}
+
+/** 코스 추천 후보: 끝난 러닝 기록과 경로 좌표 수 (최근 50개) */
+export async function listCourseCandidates(db: SQLiteDatabase): Promise<CourseCandidate[]> {
+  const rows = await db.getAllAsync<{
+    id: number;
+    started_at: string;
+    distance_m: number;
+    duration_sec: number;
+    point_count: number;
+  }>(
+    `SELECT r.id, r.started_at, r.distance_m, r.duration_sec, COUNT(p.id) AS point_count
+       FROM runs r
+       LEFT JOIN run_points p ON p.run_id = r.id AND p.used_for_distance = 1
+      WHERE r.status = 'finished'
+      GROUP BY r.id
+      ORDER BY r.started_at DESC
+      LIMIT 50`,
+  );
+  return rows.map((r) => ({
+    runId: r.id,
+    startedAt: r.started_at,
+    distanceM: r.distance_m,
+    durationSec: r.duration_sec,
+    pointCount: r.point_count,
+  }));
 }
 
 export async function createRun(db: SQLiteDatabase, now: number, shoeId: number | null = null): Promise<number> {

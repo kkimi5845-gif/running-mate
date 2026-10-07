@@ -45,6 +45,7 @@ export default function RootLayout() {
         <Stack.Screen name="run/active" options={{ gestureEnabled: false }} />
         <Stack.Screen name="run/[id]" options={{ headerShown: true, title: '러닝 기록' }} />
         <Stack.Screen name="shoe/edit" options={{ headerShown: true, title: '신발 등록' }} />
+        <Stack.Screen name="mate-settings" options={{ headerShown: true, title: '러닝메이트 설정' }} />
       </Stack>
     </SQLiteProvider>
   );

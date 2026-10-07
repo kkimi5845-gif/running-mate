@@ -6,12 +6,15 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
+import { MateAvatar } from '@/components/MateAvatar';
 import { Screen } from '@/components/Screen';
 import { LOCAL_ONLY } from '@/constants/notices';
 import { getDbStatus, LATEST_DB_VERSION, type DbStatus } from '@/db';
 import { latestInbody, type InbodyLog } from '@/db/inbody';
 import { getProfile } from '@/db/profile';
+import { getMateSettings, type MateSettings } from '@/db/settings';
 import { METRICS, formatValue } from '@/inbody/metrics';
+import { TONE_LABEL } from '@/mate/types';
 import {
   CONTINUOUS_RUN,
   DISCOMFORT_AREAS,
@@ -30,12 +33,14 @@ export default function MeScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [inbody, setInbody] = useState<InbodyLog | null>(null);
   const [status, setStatus] = useState<DbStatus | null>(null);
+  const [mate, setMate] = useState<MateSettings | null>(null);
 
   // 수정 화면에서 돌아올 때마다 새로 읽는다
   useFocusEffect(
     useCallback(() => {
       getProfile(db).then(setProfile);
       latestInbody(db).then(setInbody);
+      getMateSettings(db).then(setMate);
       getDbStatus(db).then(setStatus).catch(() => setStatus(null));
     }, [db]),
   );
@@ -85,6 +90,22 @@ export default function MeScreen() {
         <BigButton label="기록·그래프 보기" variant="outline" onPress={() => router.push('/inbody')} />
       </Card>
 
+      <Card>
+        <AppText variant="title">러닝메이트</AppText>
+        {mate && (
+          <View style={styles.mateRow}>
+            <MateAvatar tone={mate.tone} size={56} />
+            <View style={styles.rowValue}>
+              <AppText bold>{mate.name}</AppText>
+              <AppText variant="caption">
+                {TONE_LABEL[mate.tone].title} 말투 · 소리 {mate.voiceOn ? '켜짐' : '꺼짐'}
+              </AppText>
+            </View>
+          </View>
+        )}
+        <BigButton label="이름·말투 바꾸기" variant="outline" onPress={() => router.push('/mate-settings')} />
+      </Card>
+
       <View style={styles.footer}>
         <AppText variant="caption">{LOCAL_ONLY}</AppText>
         {status ? (
@@ -125,6 +146,11 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     flex: 1,
+  },
+  mateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   footer: {
     gap: spacing.xs,

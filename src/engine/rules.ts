@@ -102,3 +102,9 @@ export const REASON_TEXT: Record<ReasonCode, (ctx: { sessionsPerWeek: number }) 
     `최근 7일 동안 목표한 주 ${sessionsPerWeek}회를 채웠어요. 오늘은 쉬어도 좋아요.`,
   REST_ALREADY_RAN_TODAY: () => '오늘은 이미 달렸어요. 잘하셨어요!',
 };
+
+// ── 7. 코스 추천 (내가 달렸던 코스 중에서) ───────────────
+/** 오늘 추천 시간과 지난 기록의 시간이 이 비율 안으로 차이 나면 비슷한 코스로 본다 (0.35 = ±35%) */
+export const COURSE_TIME_TOLERANCE = 0.35;
+/** 경로를 그릴 수 있을 만큼 좌표가 있어야 코스로 쓴다 */
+export const COURSE_MIN_POINTS = 10;
