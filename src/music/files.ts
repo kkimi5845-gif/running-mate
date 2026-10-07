@@ -1,4 +1,3 @@
-import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 
 import { displayName } from './select';
@@ -14,13 +13,15 @@ function musicDir(): Directory {
 }
 
 export async function pickMusicFiles(): Promise<{ name: string; uri: string }[]> {
-  const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', multiple: true, copyToCacheDirectory: true });
-  if (result.canceled) return [];
-  return result.assets.map((a, i) => {
-    const ext = a.name.split('.').pop()?.toLowerCase() || 'mp3';
+  // 파일 시스템 부품의 자체 고르기 창을 쓴다: 고른 파일을 읽을 권한까지 함께 받아 와서 복사할 수 있다.
+  const picked = await File.pickFileAsync({ mimeTypes: 'audio/*', multipleFiles: true });
+  if (picked.canceled) return [];
+  return picked.result.map((file, i) => {
+    const name = file.name || `music-${i}.mp3`;
+    const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : 'mp3';
     const saved = new File(musicDir(), `music-${Date.now()}-${i}.${ext}`);
-    new File(a.uri).copySync(saved);
-    return { name: displayName(a.name), uri: saved.uri };
+    file.copySync(saved);
+    return { name: displayName(name), uri: saved.uri };
   });
 }
 
