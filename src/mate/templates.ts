@@ -75,6 +75,12 @@ export const COURSE_LINE: Record<MateTone, (km: string) => string> = {
   cheerful: (km) => `지난번 ${km}km 코스 어때요? 오늘 딱이에요!`,
 };
 
+/** 내 지난 코스가 없을 때, 앱에 들어 있는 제주 코스를 권한다 */
+export const JEJU_LINE: Record<MateTone, (name: string) => string> = {
+  gentle: (name) => `오늘은 ${name} 코스도 잘 어울려요.`,
+  cheerful: (name) => `오늘은 ${name} 어때요? 바닷바람 맞으며 달려 봐요!`,
+};
+
 /** 강도를 말로 풀어서 (문장 끝에 붙인다) */
 export const INTENSITY_PHRASE: Record<Intensity, string> = {
   very_easy: '숨이 차지 않게 아주 천천히',

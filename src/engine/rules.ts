@@ -108,3 +108,16 @@ export const REASON_TEXT: Record<ReasonCode, (ctx: { sessionsPerWeek: number }) 
 export const COURSE_TIME_TOLERANCE = 0.35;
 /** 경로를 그릴 수 있을 만큼 좌표가 있어야 코스로 쓴다 */
 export const COURSE_MIN_POINTS = 10;
+
+// ── 8. 제주 코스 추천 (앱에 들어 있는 코스 목록에서) ──────
+/** 오늘 달릴 거리를 어림할 때 쓰는 속도 (km/시). 초보 기준으로 넉넉하게 잡는다. */
+export const JEJU_RUN_KMH = 8;
+export const JEJU_WALK_KMH = 5;
+/** 쉬지 않고 이 시간(분) 이상 달리는 단계면 상급 코스까지 추천한다 */
+export const JEJU_HARD_MIN_RUN = 45;
+/** 내 수준보다 한 단계 쉬운 코스는 이만큼(km) 더 멀리 있는 것처럼 뒤로 미룬다 */
+export const JEJU_LEVEL_GAP_PENALTY_KM = 15;
+/** 가장 가까운 코스도 이보다 멀면 제주 밖에 있다고 보고 거리순 정렬을 하지 않는다 (km) */
+export const JEJU_NEAR_LIMIT_KM = 100;
+/** 이런 이유가 있는 날에는 언덕·흙길·계단 코스를 뺀다 */
+export const JEJU_AVOID_ROUGH_REASONS: ReasonCode[] = ['DISCOMFORT_LOWER', 'BODY_MORE_WALK', 'UNWELL_LOWER'];

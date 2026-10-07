@@ -8,12 +8,13 @@
 import type { Recommendation, Workout } from '@/engine/types';
 
 import { withIeyo } from './korean';
-import { COURSE_LINE, GREETING, INTENSITY_PHRASE, REASON_LINES, REST_HEADLINE } from './templates';
+import { COURSE_LINE, GREETING, INTENSITY_PHRASE, JEJU_LINE, REASON_LINES, REST_HEADLINE } from './templates';
 import type { MateMessage, MateTone } from './types';
 
 export type MateContext = {
   name?: string; // 러닝메이트 이름
   courseKm?: string | null; // 추천 코스 거리 (예: '2.1')
+  jejuCourse?: string | null; // 추천 제주 코스 이름 (내 지난 코스가 없을 때만 말한다)
 };
 
 function workoutLine(w: Workout, total: number, tone: MateTone, intensity: string): string {
@@ -38,6 +39,7 @@ export function buildMateMessage(rec: Recommendation, tone: MateTone, ctx: MateC
     // 첫 이유(기본 구성 설명)는 위 문장과 겹치므로 조정 이유만 덧붙인다
     for (const code of rec.reasons.slice(1)) lines.push(REASON_LINES[code][tone]);
     if (ctx.courseKm) lines.push(COURSE_LINE[tone](ctx.courseKm));
+    else if (ctx.jejuCourse) lines.push(JEJU_LINE[tone](ctx.jejuCourse));
   }
 
   return { lines, speech: lines.join(' ') };

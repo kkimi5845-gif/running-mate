@@ -1,3 +1,4 @@
+import { spokenName } from '@/jeju/courses';
 import { recommend } from '@/engine/recommend';
 import type { Recommendation, ReasonCode } from '@/engine/types';
 import type { Profile } from '@/profile/options';
@@ -68,6 +69,17 @@ describe('generateMateMessage', () => {
 
   it('코스가 있으면 코스를 추천한다 (휴식일 땐 안 함)', () => {
     expect(buildMateMessage(rec, 'gentle', { courseKm: '2.1' }).speech).toContain('2.1km 코스');
+  });
+
+  it('지난 코스가 없을 때만 제주 코스를 말한다', () => {
+    expect(buildMateMessage(rec, 'gentle', { jejuCourse: '새섬' }).speech).toContain('새섬');
+    expect(buildMateMessage(rec, 'gentle', { courseKm: '2.1', jejuCourse: '새섬' }).speech).not.toContain('새섬');
+  });
+
+  it('제주 코스 이름을 소리로 읽기 좋게 바꾼다', () => {
+    expect(spokenName('함덕해수욕장 → 관곶')).toBe('함덕해수욕장에서 관곶');
+    expect(spokenName('새섬 (새연교)')).toBe('새섬');
+    expect(spokenName('올레 7코스 (외돌개 → 월평)')).toBe('올레 7코스');
   });
 
   it('모든 이유 코드에 두 말투 문구가 있고, 진단·판정 표현이 없다', () => {

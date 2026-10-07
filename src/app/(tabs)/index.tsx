@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { BigButton } from '@/components/BigButton';
 import { CourseCard } from '@/components/CourseCard';
 import { DailyLineCard } from '@/components/DailyLineCard';
+import { JejuCourseCard } from '@/components/JejuCourseCard';
 import { Disclaimer } from '@/components/Disclaimer';
 import { MateBubble } from '@/components/MateBubble';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -12,9 +13,12 @@ import { Screen } from '@/components/Screen';
 import { getRunPoints, listCourseCandidates } from '@/db/runs';
 import { getMateSettings, isUnwellToday, setUnwellToday, type MateSettings } from '@/db/settings';
 import { recommendCourse, type CourseSuggestion } from '@/engine/course';
+import { jejuTarget, recommendJejuCourses, type JejuPick } from '@/engine/jeju';
 import { loadEngineInput } from '@/engine/loadInput';
 import { recommend } from '@/engine/recommend';
 import type { Recommendation } from '@/engine/types';
+import { getHere } from '@/jeju/here';
+import { JEJU_COURSES, spokenName } from '@/jeju/courses';
 import { formatKm } from '@/location/format';
 import { dailyCategory, pickDailyLine, type LineCategory } from '@/mate/dailyLines';
 import { generateMateMessage } from '@/mate/generateMateMessage';
@@ -30,6 +34,8 @@ type HomeState = {
   course: CourseSuggestion | null;
   coursePoints: { latitude: number; longitude: number }[];
   hasHistory: boolean;
+  jejuPick: JejuPick | null;
+  jejuKm: number | null;
   dayKey: string;
   lineCategory: LineCategory;
 };
@@ -43,10 +49,11 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     const today = new Date();
     const todayKey = toISODate(today);
-    const [unwell, mate, candidates] = await Promise.all([
+    const [unwell, mate, candidates, here] = await Promise.all([
       isUnwellToday(db, todayKey),
       getMateSettings(db),
       listCourseCandidates(db),
+      getHere(false), // 이미 허용된 경우에만, 휴대폰 안에서 가까운 코스 계산용
     ]);
     const input = await loadEngineInput(db, today, unwell);
     if (!input) return;
@@ -56,9 +63,12 @@ export default function HomeScreen() {
     const coursePoints = course
       ? (await getRunPoints(db, course.runId, { onlyUsed: true })).map((p) => ({ latitude: p.lat, longitude: p.lng }))
       : [];
+    const jeju = jejuTarget(rec, input.profile);
+    const jejuPick = rec.rest ? null : (recommendJejuCourses(JEJU_COURSES, jeju, { here }).picks[0] ?? null);
     const message = await generateMateMessage(rec, mate.tone, {
       name: mate.name,
       courseKm: course ? formatKm(course.distanceM) : null,
+      jejuCourse: jejuPick ? spokenName(jejuPick.course.name) : null,
     });
 
     setState({
@@ -70,6 +80,8 @@ export default function HomeScreen() {
       course,
       coursePoints,
       hasHistory: candidates.length > 0,
+      jejuPick,
+      jejuKm: jeju.km,
       dayKey: todayKey,
       lineCategory: dailyCategory(rec, unwell),
     });
@@ -117,6 +129,7 @@ export default function HomeScreen() {
           {!state.rec.rest && (
             <>
               <CourseCard course={state.course} points={state.coursePoints} hasHistory={state.hasHistory} />
+              <JejuCourseCard pick={state.jejuPick} targetKm={state.jejuKm} />
               <BigButton label="러닝 시작" onPress={() => router.push('/run/active')} />
             </>
           )}

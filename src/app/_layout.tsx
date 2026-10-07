@@ -47,6 +47,7 @@ export default function RootLayout() {
         <Stack.Screen name="shoe/edit" options={{ headerShown: true, title: '신발 등록' }} />
         <Stack.Screen name="mate-settings" options={{ headerShown: true, title: '러닝메이트 설정' }} />
         <Stack.Screen name="music" options={{ headerShown: true, title: '러닝 음악' }} />
+        <Stack.Screen name="jeju" options={{ headerShown: true, title: '제주 러닝 코스' }} />
       </Stack>
     </SQLiteProvider>
   );
