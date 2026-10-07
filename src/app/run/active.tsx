@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
+import { GpsDebugPanel } from '@/components/GpsDebugPanel';
 import {
   createRun,
   deleteRun,
@@ -243,6 +244,8 @@ export default function ActiveRunScreen() {
           <Stat label="평균 페이스" value={formatPace(avgPace)} />
           <Stat label="현재 페이스" value={formatPace(curPace)} />
         </View>
+
+        <GpsDebugPanel runId={run.id} distanceM={run.distanceM} tick={now} mode={mode} />
 
         {mode === 'foreground' && (
           <Card>

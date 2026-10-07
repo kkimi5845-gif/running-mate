@@ -110,6 +110,13 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE runs ADD COLUMN active_since INTEGER;
     `,
   },
+  {
+    version: 4,
+    description: '거리 계산에서 뺀 좌표의 이유 기록 (accuracy | speed | duplicate)',
+    sql: `
+      ALTER TABLE run_points ADD COLUMN exclude_reason TEXT;
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

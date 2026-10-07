@@ -8,6 +8,7 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
+import { GpsDebugPanel } from '@/components/GpsDebugPanel';
 import { RouteMap } from '@/components/RouteMap';
 import { deleteRun, getRun, getRunPoints, type Run, type StoredPoint } from '@/db/runs';
 import { formatDuration, formatKm, formatPace } from '@/location/format';
@@ -117,6 +118,8 @@ export default function RunDetailScreen() {
           </AppText>
         </Card>
       )}
+
+      <GpsDebugPanel runId={run.id} distanceM={run.distanceM} />
 
       {isFresh && <BigButton label="확인" onPress={close} />}
       <BigButton

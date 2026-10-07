@@ -11,6 +11,7 @@ import {
   elapsedSec,
   finishRun,
   getActiveRun,
+  getPointStats,
   getRun,
   getRunPoints,
   ingestLocations,
@@ -66,6 +67,7 @@ describe('러닝 기록', () => {
     expect(run.distanceM).toBeCloseTo(4 * 5.56, 0);
     expect(await getRunPoints(db, id)).toHaveLength(6);
     expect(await getRunPoints(db, id, { onlyUsed: true })).toHaveLength(4);
+    expect(await getPointStats(db, id)).toEqual({ total: 6, used: 4, accuracy: 1, speed: 1, duplicate: 0 });
   });
 
   it('일시정지 중 좌표는 무시하고, 다시 시작하면 그 자리부터 새로 잰다', async () => {

@@ -156,6 +156,40 @@ export async function getRunPoints(
   return rows.map(toPoint);
 }
 
+export type PointStats = {
+  total: number;
+  used: number;
+  accuracy: number;
+  speed: number;
+  duplicate: number;
+};
+
+/** 받은 좌표 개수와 거리 계산에서 뺀 이유별 개수 (GPS 상태 확인용) */
+export async function getPointStats(db: SQLiteDatabase, runId: number): Promise<PointStats> {
+  const row = await db.getFirstAsync<{
+    total: number;
+    used: number | null;
+    accuracy: number | null;
+    speed: number | null;
+    duplicate: number | null;
+  }>(
+    `SELECT COUNT(*) AS total,
+            SUM(used_for_distance) AS used,
+            SUM(exclude_reason = 'accuracy') AS accuracy,
+            SUM(exclude_reason = 'speed') AS speed,
+            SUM(exclude_reason = 'duplicate') AS duplicate
+       FROM run_points WHERE run_id = ?`,
+    [runId],
+  );
+  return {
+    total: row?.total ?? 0,
+    used: row?.used ?? 0,
+    accuracy: row?.accuracy ?? 0,
+    speed: row?.speed ?? 0,
+    duplicate: row?.duplicate ?? 0,
+  };
+}
+
 /** 가장 최근에 받은 좌표 1개 (GPS 신호 상태 표시용) */
 export async function getLastPoint(db: SQLiteDatabase, runId: number): Promise<StoredPoint | null> {
   const row = await db.getFirstAsync<PointRow>(
@@ -201,9 +235,20 @@ export async function ingestLocations(db: SQLiteDatabase, locations: IncomingLoc
       };
       const e = evaluatePoint(prev, p);
       await db.runAsync(
-        `INSERT INTO run_points (run_id, recorded_at, latitude, longitude, altitude, accuracy, speed, used_for_distance)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [run.id, p.t, p.lat, p.lng, loc.coords.altitude, p.accuracy, loc.coords.speed, e.used ? 1 : 0],
+        `INSERT INTO run_points (run_id, recorded_at, latitude, longitude, altitude, accuracy, speed,
+                                 used_for_distance, exclude_reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          run.id,
+          p.t,
+          p.lat,
+          p.lng,
+          loc.coords.altitude,
+          p.accuracy,
+          loc.coords.speed,
+          e.used ? 1 : 0,
+          e.used ? null : e.reason,
+        ],
       );
       if (e.used) {
         added += e.addMeters;
