@@ -1,7 +1,7 @@
 import { expandPlan } from '@/coach/plan';
 import type { Recommendation } from '@/engine/types';
 
-import { cueSpeech, paceSpeech } from '../coachLines';
+import { CHEERS, cueSpeech, paceSpeech } from '../coachLines';
 import { DAILY_LINES, dailyCategory, pickDailyLine } from '../dailyLines';
 
 const banned = ['비만', '과체중', '질환', '진단', '처방', '위험', '정상', '이상 소견'];
@@ -38,6 +38,17 @@ describe('음성 코칭 문구', () => {
       '2킬로미터 지났어요. 평균 페이스는 6분 30초예요.',
     );
     expect(cueSpeech({ key: 'km:1', type: 'km', km: 1, avgPaceSecPerKm: null }, 'cheerful')).toBe('1킬로미터 돌파!');
+  });
+
+  it('응원 문구', () => {
+    expect(cueSpeech({ key: 'half', type: 'cheer', kind: 'half', n: 0 }, 'gentle')).toContain('반');
+    const a = cueSpeech({ key: 'cheer:1', type: 'cheer', kind: 'random', n: 1 }, 'cheerful');
+    const b = cueSpeech({ key: 'cheer:2', type: 'cheer', kind: 'random', n: 2 }, 'cheerful');
+    expect(a).not.toBe(b);
+    for (const tone of ['gentle', 'cheerful'] as const) {
+      const all = [CHEERS[tone].half, CHEERS[tone].almost, ...CHEERS[tone].random];
+      for (const line of all) for (const w of banned) expect(line).not.toContain(w);
+    }
   });
 
   it('완료 안내', () => {

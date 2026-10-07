@@ -82,13 +82,37 @@ describe('cuesBetween', () => {
   });
 
   it('1km마다 평균 페이스와 함께', () => {
-    const cues = cuesBetween(null, at(350, 990), at(360, 1005));
+    // (3분 응원 시각과 겹치지 않게 345초로)
+    const cues = cuesBetween(null, at(335, 990), at(345, 1005));
     expect(cues).toHaveLength(1);
     expect(cues[0]).toMatchObject({ key: 'km:1', type: 'km', km: 1 });
-    if (cues[0].type === 'km') expect(cues[0].avgPaceSecPerKm).toBeCloseTo(358.2, 0);
+    if (cues[0].type === 'km') expect(cues[0].avgPaceSecPerKm).toBeCloseTo(343.3, 0);
   });
 
-  it('자유 러닝(계획 없음)은 km 안내만', () => {
-    expect(cuesBetween(null, at(0), at(600, 500))).toHaveLength(0);
+  it('자유 러닝(계획 없음)도 3분마다 응원', () => {
+    expect(cuesBetween(null, at(170), at(175, 500))).toHaveLength(0);
+    expect(cuesBetween(null, at(179), at(180, 500))).toEqual([{ key: 'cheer:1', type: 'cheer', kind: 'random', n: 1 }]);
+  });
+
+  it('계획의 반이 지나면 응원', () => {
+    // 21분 계획의 반(630초)은 2세트 달리기 한가운데 — 구간이 바뀌는 시각과 겹치지 않는다
+    const p2 = expandPlan({ ...workout, cooldownMin: 4 });
+    const half = p2.totalSec / 2;
+    expect(cuesBetween(p2, at(half - 1), at(half))).toEqual([{ key: 'half', type: 'cheer', kind: 'half', n: 0 }]);
+  });
+
+  it('구간이 바뀌는 순간에는 응원 대신 구간 안내', () => {
+    // 540초는 3분 응원 시각이면서 2세트 달리기 시작
+    const cues = cuesBetween(plan, at(539), at(540));
+    expect(cues.map((c) => c.type)).toEqual(['segment']);
+  });
+
+  it('긴 달리기 구간은 끝나기 30초 전에 응원', () => {
+    const long = expandPlan({ warmupMin: 0, main: [{ kind: 'run', minutes: 2 }], repeat: 1, cooldownMin: 0 });
+    expect(cuesBetween(long, at(89), at(90))[0]).toMatchObject({ key: 'almost:0', kind: 'almost' });
+  });
+
+  it('계획이 끝난 뒤에는 응원하지 않는다', () => {
+    expect(cuesBetween(plan, at(22 * 60 + 179), at(22 * 60 + 180)).filter((c) => c.type === 'cheer')).toHaveLength(0);
   });
 });

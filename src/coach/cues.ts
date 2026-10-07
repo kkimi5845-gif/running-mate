@@ -8,7 +8,17 @@ import { positionAt, type PlanSegment, type RunPlan } from './plan';
 export type Cue =
   | { key: string; type: 'segment'; segment: PlanSegment; isLastSet: boolean; sets: number }
   | { key: string; type: 'planDone' }
-  | { key: string; type: 'km'; km: number; avgPaceSecPerKm: number | null };
+  | { key: string; type: 'km'; km: number; avgPaceSecPerKm: number | null }
+  | { key: string; type: 'cheer'; kind: CheerKind; n: number };
+
+/** 응원: half(계획의 반), almost(달리기 구간 끝나기 30초 전), random(몇 분마다) */
+export type CheerKind = 'half' | 'almost' | 'random';
+
+/** 이 간격(초)마다 응원 한마디 (다른 안내가 없을 때만) */
+export const CHEER_EVERY_SEC = 180;
+/** 달리기 구간이 이보다 길면 끝나기 30초 전에 "조금만 더!" */
+const ALMOST_MIN_SEGMENT_SEC = 90;
+const ALMOST_BEFORE_SEC = 30;
 
 export type CoachSnapshot = { elapsedSec: number; distanceM: number };
 
@@ -34,6 +44,27 @@ export function cuesBetween(
     if (plan.totalSec > prev.elapsedSec && plan.totalSec <= now.elapsedSec && positionAt(plan, now.elapsedSec).done) {
       cues.length = 0; // 끝났으면 구간 안내 대신 완료 안내만
       cues.push({ key: 'done', type: 'planDone' });
+    }
+  }
+
+  // 응원은 다른 안내(구간·완료)가 없을 때만, 한 번에 하나
+  if (cues.length === 0) {
+    const crossed = (t: number) => t > prev.elapsedSec && t <= now.elapsedSec;
+    if (plan && crossed(plan.totalSec / 2)) {
+      cues.push({ key: 'half', type: 'cheer', kind: 'half', n: 0 });
+    } else if (plan) {
+      plan.segments.forEach((seg, i) => {
+        if (cues.length > 0 || seg.kind !== 'run' || seg.seconds < ALMOST_MIN_SEGMENT_SEC) return;
+        if (crossed(seg.startSec + seg.seconds - ALMOST_BEFORE_SEC)) {
+          cues.push({ key: `almost:${i}`, type: 'cheer', kind: 'almost', n: i });
+        }
+      });
+    }
+    const nowN = Math.floor(now.elapsedSec / CHEER_EVERY_SEC);
+    const prevN = Math.floor(Math.max(0, prev.elapsedSec) / CHEER_EVERY_SEC);
+    const planOver = plan !== null && now.elapsedSec >= plan.totalSec;
+    if (cues.length === 0 && nowN > prevN && nowN >= 1 && !planOver) {
+      cues.push({ key: `cheer:${nowN}`, type: 'cheer', kind: 'random', n: nowN });
     }
   }
 
