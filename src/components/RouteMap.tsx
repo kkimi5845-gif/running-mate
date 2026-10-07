@@ -103,7 +103,14 @@ function ShapeRoute({ points, height }: { points: LatLng[]; height: number }) {
         </Svg>
       )}
       <AppText variant="caption" style={styles.legend}>
-        ● 초록: 출발 · ● 빨강: 도착
+        <AppText variant="caption" color={colors.success}>
+          ●
+        </AppText>{' '}
+        출발 ·{' '}
+        <AppText variant="caption" color={colors.danger}>
+          ●
+        </AppText>{' '}
+        도착
       </AppText>
     </View>
   );
