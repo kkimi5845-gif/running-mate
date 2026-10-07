@@ -1,15 +1,37 @@
-import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
-import { Screen } from '@/components/Screen';
+import { router, useFocusEffect } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useCallback, useState } from 'react';
 
-/** 홈 (오늘의 추천) — 5·6단계에서 추천 엔진과 러닝메이트 말풍선이 들어온다. */
+import { BigButton } from '@/components/BigButton';
+import { Disclaimer } from '@/components/Disclaimer';
+import { RecommendationCard } from '@/components/RecommendationCard';
+import { Screen } from '@/components/Screen';
+import { loadEngineInput } from '@/engine/loadInput';
+import { recommend } from '@/engine/recommend';
+import type { Recommendation } from '@/engine/types';
+
+/** 홈 (오늘의 추천) — 6단계에서 러닝메이트 말풍선이 이 카드 위에 들어온다. */
 export default function HomeScreen() {
+  const db = useSQLiteContext();
+  const [rec, setRec] = useState<Recommendation | null>(null);
+  const [sessionsPerWeek, setSessionsPerWeek] = useState(3);
+
+  // 화면에 돌아올 때마다(러닝을 끝냈거나 프로필을 고쳤을 때) 다시 계산한다
+  useFocusEffect(
+    useCallback(() => {
+      loadEngineInput(db, new Date()).then((input) => {
+        if (!input) return;
+        setSessionsPerWeek(input.profile.sessionsPerWeek);
+        setRec(recommend(input));
+      });
+    }, [db]),
+  );
+
   return (
-    <Screen title="오늘의 러닝" subtitle="러닝메이트가 오늘 달릴지, 쉴지 알려드려요">
-      <Card tone="accent">
-        <AppText variant="title">안녕하세요! 👟</AppText>
-        <AppText>곧 이곳에서 러닝메이트가 오늘의 추천을 알려드릴게요.</AppText>
-      </Card>
+    <Screen title="오늘의 러닝" subtitle="오늘 달릴지, 쉴지, 어떻게 달릴지 알려드려요">
+      {rec && <RecommendationCard rec={rec} sessionsPerWeek={sessionsPerWeek} />}
+      {rec && !rec.rest && <BigButton label="러닝 시작" onPress={() => router.push('/run/active')} />}
+      <Disclaimer />
     </Screen>
   );
 }
