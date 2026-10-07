@@ -6,7 +6,7 @@
  * - 코스를 고치거나 더하려면 이 배열만 고치면 된다. id는 바꾸지 않는다.
  */
 
-/** 1 입문 · 2 중급 · 3 상급 */
+/** 1 초급 · 2 중급 · 3 고급 */
 export type JejuLevel = 1 | 2 | 3;
 
 export type JejuArea = 'jeju_city' | 'seogwipo' | 'east' | 'west';
@@ -40,13 +40,13 @@ export const AREA_LABEL: Record<JejuArea, string> = {
 };
 
 export const LEVEL_LABEL: Record<JejuLevel, string> = {
-  1: '입문',
+  1: '초급',
   2: '중급',
-  3: '상급',
+  3: '고급',
 };
 
 export const JEJU_COURSES: JejuCourse[] = [
-  // ── 입문 ──
+  // ── 초급 ──
   {
     id: 'hamdeok',
     name: '함덕해수욕장 → 관곶',
@@ -216,7 +216,7 @@ export const JEJU_COURSES: JejuCourse[] = [
     lat: 33.519,
     lng: 126.5535,
   },
-  // ── 상급 ──
+  // ── 고급 ──
   {
     id: 'woljeong-sehwa',
     name: '월정리 → 세화 해안도로',

@@ -132,11 +132,26 @@ describe('recommendJejuCourses', () => {
     expect(recommendJejuCourses(list, target(), { area: 'west' }).picks.map((p) => p.course.id)).toEqual(['b']);
   });
 
+  it('수준을 직접 고르면 그 수준 코스만 (내 수준보다 높아도)', () => {
+    const list = [course('easy'), course('mid', { level: 2 }), course('hard', { level: 3 })];
+    const r = recommendJejuCourses(list, target({ level: 1 }), { level: 3 });
+    expect(r.picks.map((p) => p.course.id)).toEqual(['hard']);
+    expect(r.picks[0].exactLevel).toBe(false);
+    expect(r.others).toEqual([]);
+  });
+
+  it('수준을 골라도 언덕을 피하는 날은 rough 코스를 뺀다', () => {
+    const list = [course('flat', { level: 2 }), course('hill', { level: 2, rough: '오르막' })];
+    const r = recommendJejuCourses(list, target({ avoidRough: true }), { level: 2 });
+    expect(r.picks.map((p) => p.course.id)).toEqual(['flat']);
+    expect(r.others.map((o) => o.why)).toEqual(['rough']);
+  });
+
   it('쉬는 날은 달리는 방법 없이 목록만', () => {
     expect(recommendJejuCourses([course('a')], target({ km: null })).picks[0].how).toBeNull();
   });
 
-  it('실제 목록: 입문 + 무릎 불편이면 입문 평지 코스만', () => {
+  it('실제 목록: 초급 + 무릎 불편이면 초급 평지 코스만', () => {
     const r = recommendJejuCourses(JEJU_COURSES, target({ avoidRough: true }));
     expect(r.picks.length).toBeGreaterThan(5);
     expect(r.picks.every((p) => p.course.level === 1 && p.course.rough === null)).toBe(true);

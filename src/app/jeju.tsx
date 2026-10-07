@@ -13,7 +13,7 @@ import { isUnwellToday } from '@/db/settings';
 import { jejuTarget, kmText, recommendJejuCourses, type JejuSkipReason, type JejuTarget } from '@/engine/jeju';
 import { loadEngineInput } from '@/engine/loadInput';
 import { recommend } from '@/engine/recommend';
-import { AREA_LABEL, JEJU_COURSES, LEVEL_LABEL, type JejuArea } from '@/jeju/courses';
+import { AREA_LABEL, JEJU_COURSES, LEVEL_LABEL, type JejuArea, type JejuLevel } from '@/jeju/courses';
 import { getHere } from '@/jeju/here';
 import { spacing } from '@/theme';
 import { toISODate } from '@/utils/date';
@@ -21,6 +21,7 @@ import { toISODate } from '@/utils/date';
 type Here = { lat: number; lng: number } | null;
 
 const AREAS: (JejuArea | null)[] = [null, 'jeju_city', 'seogwipo', 'east', 'west'];
+const LEVELS: (JejuLevel | null)[] = [null, 1, 2, 3];
 
 const SKIP_TEXT: Record<JejuSkipReason, string> = {
   harder: '지금 수준보다 길거나 힘든 코스예요. 실력이 늘면 추천해 드릴게요.',
@@ -33,6 +34,7 @@ export default function JejuScreen() {
   const [target, setTarget] = useState<JejuTarget | null>(null);
   const [here, setHere] = useState<Here>(null);
   const [area, setArea] = useState<JejuArea | null>(null);
+  const [level, setLevel] = useState<JejuLevel | null>(null); // null = 내 수준 맞춤
   const [locating, setLocating] = useState(false);
   const [locateFailed, setLocateFailed] = useState(false);
 
@@ -56,7 +58,8 @@ export default function JejuScreen() {
 
   if (!target) return null;
 
-  const result = recommendJejuCourses(JEJU_COURSES, target, { here, area });
+  const result = recommendJejuCourses(JEJU_COURSES, target, { here, area, level });
+  const aboveMe = level !== null && level > target.level;
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -88,6 +91,27 @@ export default function JejuScreen() {
         </>
       )}
 
+      <AppText bold>수준</AppText>
+      <View style={styles.areas}>
+        {LEVELS.map((l) => (
+          <View key={l ?? 'mine'} style={styles.areaItem}>
+            <ChoiceButton
+              compact
+              label={l ? LEVEL_LABEL[l] : '내 수준 맞춤'}
+              selected={level === l}
+              onPress={() => setLevel(l)}
+            />
+          </View>
+        ))}
+      </View>
+      {aboveMe ? (
+        <AppText variant="caption">
+          지금 추천 수준({LEVEL_LABEL[target.level]})보다 길거나 힘든 코스예요. 중간에 걷기를 섞거나 일부 구간만 달려도
+          충분해요.
+        </AppText>
+      ) : null}
+
+      <AppText bold>지역</AppText>
       <View style={styles.areas}>
         {AREAS.map((a) => (
           <View key={a ?? 'all'} style={styles.areaItem}>
@@ -97,9 +121,11 @@ export default function JejuScreen() {
       </View>
 
       <Card>
-        <AppText variant="title">추천 코스 ({result.picks.length}곳)</AppText>
+        <AppText variant="title">
+          {level ? `${LEVEL_LABEL[level]} 코스` : '추천 코스'} ({result.picks.length}곳)
+        </AppText>
         {result.picks.length === 0 ? (
-          <AppText variant="caption">이 지역에는 오늘 맞는 코스가 없어요. 다른 지역을 골라 보세요.</AppText>
+          <AppText variant="caption">이 조건에 맞는 코스가 없어요. 다른 지역이나 수준을 골라 보세요.</AppText>
         ) : (
           result.picks.map((p) => <JejuCourseItem key={p.course.id} pick={p} course={p.course} />)
         )}

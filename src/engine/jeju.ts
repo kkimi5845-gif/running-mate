@@ -88,9 +88,15 @@ function plannedKm(c: JejuCourse, targetKm: number): number {
 export function recommendJejuCourses(
   courses: JejuCourse[],
   target: JejuTarget,
-  opts: { here?: { lat: number; lng: number } | null; area?: JejuArea | null } = {},
+  opts: {
+    here?: { lat: number; lng: number } | null;
+    area?: JejuArea | null;
+    /** 사용자가 직접 고른 수준. 고르면 그 수준 코스만 보여 준다 (내 수준보다 높아도 보여 줌) */
+    level?: JejuLevel | null;
+  } = {},
 ): JejuResult {
-  const inArea = opts.area ? courses.filter((c) => c.area === opts.area) : courses;
+  const chosen = opts.level ?? null;
+  const inArea = courses.filter((c) => (!opts.area || c.area === opts.area) && (!chosen || c.level === chosen));
   const here = opts.here ?? null;
 
   const away = (c: JejuCourse) => (here ? distanceMeters(here, c) / 1000 : null);
@@ -101,7 +107,7 @@ export function recommendJejuCourses(
   const others: JejuResult['others'] = [];
 
   inArea.forEach((c, order) => {
-    if (c.level > target.level) {
+    if (!chosen && c.level > target.level) {
       others.push({ course: c, why: 'harder' });
       return;
     }
@@ -110,7 +116,7 @@ export function recommendJejuCourses(
       return;
     }
     const awayKm = usedLocation ? away(c) : null;
-    const score = (awayKm ?? 0) + (target.level - c.level) * JEJU_LEVEL_GAP_PENALTY_KM;
+    const score = (awayKm ?? 0) + (chosen ? 0 : (target.level - c.level) * JEJU_LEVEL_GAP_PENALTY_KM);
     const fit = target.km === null ? 0 : Math.abs(plannedKm(c, target.km) - target.km);
     picks.push({
       course: c,
