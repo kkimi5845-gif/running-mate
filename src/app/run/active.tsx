@@ -26,12 +26,15 @@ import {
   type Run,
   type StoredPoint,
 } from '@/db/runs';
-import { isUnwellToday } from '@/db/settings';
+import { listTracks } from '@/db/music';
+import { getSetting, isUnwellToday, setSetting } from '@/db/settings';
 import { getLastShoeId, listShoes, setLastShoeId, type Shoe } from '@/db/shoes';
 import { coachTick, isCoachMuted, setCoachMuted } from '@/coach/coach';
 import { expandPlan, parsePlan, positionAt, type RunPlan } from '@/coach/plan';
 import { loadEngineInput } from '@/engine/loadInput';
 import { recommend } from '@/engine/recommend';
+import { isMusicActive, pauseMusic, resumeMusic, startMusic, stopMusic } from '@/music/player';
+import type { Track } from '@/music/select';
 import { formatDuration, formatKm, formatPace } from '@/location/format';
 import { averagePaceSecPerKm, CURRENT_PACE_WINDOW_MS, currentPaceSecPerKm, MAX_ACCURACY_M } from '@/location/geo';
 import { currentTrackingMode, isExpoGo, startTracking, stopTracking, type TrackingMode } from '@/location/tracking';
@@ -66,6 +69,26 @@ export default function ActiveRunScreen() {
       setTodayPlan(rec && !rec.rest && rec.workout ? expandPlan(rec.workout) : null);
     })();
   }, [db]);
+
+  // 배경음악: 넣어 둔 곡 목록과 켜기/끄기 (마지막 선택을 기억)
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [musicOn, setMusicOn] = useState(true);
+  const [musicPlaying, setMusicPlaying] = useState(isMusicActive());
+  useFocusEffect(
+    useCallback(() => {
+      listTracks(db).then(setTracks);
+      getSetting(db, 'music_on').then((v) => setMusicOn(v !== 'off'));
+    }, [db]),
+  );
+  const chooseMusic = (on: boolean) => {
+    setMusicOn(on);
+    void setSetting(db, 'music_on', on ? 'on' : 'off');
+  };
+  const toggleMusicNow = () => {
+    if (musicPlaying) pauseMusic();
+    else resumeMusic();
+    setMusicPlaying(!musicPlaying);
+  };
 
   const toggleMute = () => {
     setCoachMuted(!muted);
@@ -167,6 +190,10 @@ export default function ActiveRunScreen() {
       const id = await createRun(db, Date.now(), shoeId, plan);
       await setLastShoeId(db, shoeId);
       setRun(await getRun(db, id));
+      if (musicOn && tracks.length > 0) {
+        await startMusic(tracks, plan ? plan.segments[0].kind : 'run');
+        setMusicPlaying(true);
+      }
       void coachTick(db); // 첫 안내 ("준비 걷기 5분으로 시작해요")
     } catch (e) {
       Alert.alert('시작하지 못했어요', String(e));
@@ -180,8 +207,13 @@ export default function ActiveRunScreen() {
     setBusy(true);
     try {
       const latest = (await getRun(db, run.id)) ?? run;
-      if (latest.status === 'recording') await pauseRun(db, latest, Date.now());
-      else await resumeRun(db, latest, Date.now());
+      if (latest.status === 'recording') {
+        await pauseRun(db, latest, Date.now());
+        pauseMusic();
+      } else {
+        await resumeRun(db, latest, Date.now());
+        if (musicPlaying) resumeMusic();
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -199,6 +231,7 @@ export default function ActiveRunScreen() {
           setBusy(true);
           try {
             await stopTracking();
+            stopMusic();
             const latest = (await getRun(db, run.id)) ?? run;
             await finishRun(db, latest, Date.now());
             router.replace({ pathname: '/run/[id]', params: { id: String(run.id), fresh: '1' } });
@@ -220,6 +253,7 @@ export default function ActiveRunScreen() {
         style: 'destructive',
         onPress: async () => {
           await stopTracking();
+          stopMusic();
           await deleteRun(db, run.id);
           router.back();
         },
@@ -252,6 +286,24 @@ export default function ActiveRunScreen() {
               selected={!todayPlan || !followPlan}
               onPress={() => setFollowPlan(false)}
             />
+          </Card>
+          <Card>
+            <AppText variant="title">배경음악</AppText>
+            {tracks.length > 0 ? (
+              <>
+                <ChoiceButton
+                  label={`내 음악 틀기 (걷기 ${tracks.filter((t) => t.kind === 'walk').length}곡 · 달리기 ${tracks.filter((t) => t.kind === 'run').length}곡)`}
+                  selected={musicOn}
+                  onPress={() => chooseMusic(true)}
+                />
+                <ChoiceButton label="음악 없이 (다른 음악 앱을 쓸 때)" selected={!musicOn} onPress={() => chooseMusic(false)} />
+              </>
+            ) : (
+              <AppText variant="caption">
+                넣어 둔 음악이 없어요. 음악 파일을 넣으면 걷기·달리기 구간에 맞춰 바꿔 틀어 드려요.
+              </AppText>
+            )}
+            <BigButton label="음악 넣기·바꾸기" variant="outline" onPress={() => router.push('/music')} />
           </Card>
           <Card>
             <AppText variant="title">오늘 신을 신발</AppText>
@@ -344,12 +396,22 @@ export default function ActiveRunScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable accessibilityRole="button" onPress={toggleMute} style={styles.mute}>
-          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={22} color={colors.textSecondary} />
-          <AppText bold color={colors.textSecondary}>
-            {muted ? '음성 안내 꺼짐 (눌러서 켜기)' : '음성 안내 켜짐 (눌러서 끄기)'}
-          </AppText>
-        </Pressable>
+        <View style={styles.toggles}>
+          <Pressable accessibilityRole="button" onPress={toggleMute} style={styles.mute}>
+            <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={22} color={colors.textSecondary} />
+            <AppText bold color={colors.textSecondary}>
+              {muted ? '안내 꺼짐' : '안내 켜짐'}
+            </AppText>
+          </Pressable>
+          {isMusicActive() && (
+            <Pressable accessibilityRole="button" onPress={toggleMusicNow} style={styles.mute}>
+              <Ionicons name={musicPlaying ? 'musical-notes' : 'pause'} size={22} color={colors.textSecondary} />
+              <AppText bold color={colors.textSecondary}>
+                {musicPlaying ? '음악 켜짐' : '음악 꺼짐'}
+              </AppText>
+            </Pressable>
+          )}
+        </View>
         <View style={styles.buttonRow}>
           <View style={styles.flex}>
             <BigButton label={paused ? '다시 시작' : '일시정지'} disabled={busy} onPress={togglePause} />
@@ -536,6 +598,11 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  toggles: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xl,
   },
   mute: {
     flexDirection: 'row',

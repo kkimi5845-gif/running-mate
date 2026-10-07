@@ -1,5 +1,7 @@
 import * as Speech from 'expo-speech';
 
+import { duckMusic } from '@/music/player';
+
 import type { MateTone } from './types';
 
 /**
@@ -27,7 +29,18 @@ export function stopSpeaking(): void {
   Speech.stop();
 }
 
-/** 앞의 말을 끊지 않고 이어서 말한다 (달리는 중 안내용) */
+/**
+ * 앞의 말을 끊지 않고 이어서 말한다 (달리는 중 안내용).
+ * 말하는 동안 앱 배경음악 소리를 줄인다. 다른 음악 앱(멜론 등)은 안드로이드가 음성 안내 동안
+ * 소리를 줄여 주는 경우가 많지만, 휴대폰·앱마다 다를 수 있다.
+ */
 export function speakQueued(text: string, tone: MateTone): void {
-  Speech.speak(text, { language: 'ko-KR', ...VOICE[tone] });
+  Speech.speak(text, {
+    language: 'ko-KR',
+    ...VOICE[tone],
+    onStart: () => duckMusic(true),
+    onDone: () => duckMusic(false),
+    onStopped: () => duckMusic(false),
+    onError: () => duckMusic(false),
+  });
 }

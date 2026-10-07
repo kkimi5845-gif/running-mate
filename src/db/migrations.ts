@@ -131,6 +131,19 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE runs ADD COLUMN plan_json TEXT;
     `,
   },
+  {
+    version: 7,
+    description: '러닝 배경음악 목록 (내 휴대폰의 음악 파일을 앱 폴더에 복사해 둔 것)',
+    sql: `
+      CREATE TABLE music_tracks (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind        TEXT NOT NULL,   -- walk(걷기 구간) | run(달리기 구간)
+        name        TEXT NOT NULL,   -- 화면에 보여줄 파일 이름
+        uri         TEXT NOT NULL,   -- 앱 폴더 안의 파일 위치
+        created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

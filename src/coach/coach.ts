@@ -9,6 +9,7 @@ import { elapsedSec, getActiveRun } from '@/db/runs';
 import { getMateSettings } from '@/db/settings';
 import { cueSpeech } from '@/mate/coachLines';
 import { speakQueued } from '@/mate/voice';
+import { switchMusic } from '@/music/player';
 
 import { cuesBetween, type CoachSnapshot } from './cues';
 import { parsePlan } from './plan';
@@ -48,6 +49,9 @@ async function tick(db: SQLiteDatabase): Promise<void> {
   state.last = snap;
   if (cues.length === 0) return;
   for (const c of cues) state.spoken.add(c.key);
+
+  // 구간이 바뀌면 배경음악도 걷기/달리기 음악으로 바꾼다
+  for (const c of cues) if (c.type === 'segment') switchMusic(c.segment.kind);
 
   const mate = await getMateSettings(db);
   if (!mate.voiceOn || muted) return;

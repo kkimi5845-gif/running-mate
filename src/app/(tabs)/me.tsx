@@ -104,6 +104,7 @@ export default function MeScreen() {
           </View>
         )}
         <BigButton label="이름·말투 바꾸기" variant="outline" onPress={() => router.push('/mate-settings')} />
+        <BigButton label="러닝 음악 넣기" variant="outline" onPress={() => router.push('/music')} />
       </Card>
 
       <View style={styles.footer}>
