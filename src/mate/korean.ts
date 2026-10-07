@@ -10,3 +10,12 @@ export function hasBatchim(word: string): boolean {
 
 /** '달리예요' / '민준이에요' */
 export const withIeyo = (name: string) => `${name}${hasBatchim(name) ? '이에요' : '예요'}`;
+
+/** 받침이 'ㄹ'인지 */
+function endsWithRieul(word: string): boolean {
+  const code = word.trim().slice(-1).charCodeAt(0);
+  return code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 8;
+}
+
+/** '5분으로' / '30초로' / '1일로' (ㄹ 받침은 '로') */
+export const withEuro = (word: string) => `${word}${hasBatchim(word) && !endsWithRieul(word) ? '으로' : '로'}`;

@@ -124,6 +124,13 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE shoes ADD COLUMN initial_km REAL NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 6,
+    description: '러닝을 시작할 때 고른 운동 계획(음성 코칭용, JSON). 자유 러닝이면 NULL',
+    sql: `
+      ALTER TABLE runs ADD COLUMN plan_json TEXT;
+    `,
+  },
 ];
 
 export const LATEST_DB_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

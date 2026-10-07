@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
 import { Card } from '@/components/Card';
+import { ChoiceButton } from '@/components/ChoiceButton';
 import { GpsDebugPanel } from '@/components/GpsDebugPanel';
 import { ShoePicker } from '@/components/ShoePicker';
 import {
@@ -25,11 +26,17 @@ import {
   type Run,
   type StoredPoint,
 } from '@/db/runs';
+import { isUnwellToday } from '@/db/settings';
 import { getLastShoeId, listShoes, setLastShoeId, type Shoe } from '@/db/shoes';
+import { coachTick, isCoachMuted, setCoachMuted } from '@/coach/coach';
+import { expandPlan, parsePlan, positionAt, type RunPlan } from '@/coach/plan';
+import { loadEngineInput } from '@/engine/loadInput';
+import { recommend } from '@/engine/recommend';
 import { formatDuration, formatKm, formatPace } from '@/location/format';
 import { averagePaceSecPerKm, CURRENT_PACE_WINDOW_MS, currentPaceSecPerKm, MAX_ACCURACY_M } from '@/location/geo';
 import { currentTrackingMode, isExpoGo, startTracking, stopTracking, type TrackingMode } from '@/location/tracking';
 import { colors, radius, spacing } from '@/theme';
+import { toISODate } from '@/utils/date';
 
 const KEEP_AWAKE_TAG = 'run-active';
 
@@ -46,6 +53,24 @@ export default function ActiveRunScreen() {
   const [shoes, setShoes] = useState<Shoe[]>([]);
   const [shoeId, setShoeId] = useState<number | null>(null);
   const shoeChosen = useRef(false);
+  // 오늘의 추천 계획 (쉬는 날이면 null) 과 고른 방식
+  const [todayPlan, setTodayPlan] = useState<RunPlan | null>(null);
+  const [followPlan, setFollowPlan] = useState(true);
+  const [muted, setMuted] = useState(isCoachMuted());
+
+  useEffect(() => {
+    (async () => {
+      const today = new Date();
+      const input = await loadEngineInput(db, today, await isUnwellToday(db, toISODate(today)));
+      const rec = input ? recommend(input) : null;
+      setTodayPlan(rec && !rec.rest && rec.workout ? expandPlan(rec.workout) : null);
+    })();
+  }, [db]);
+
+  const toggleMute = () => {
+    setCoachMuted(!muted);
+    setMuted(!muted);
+  };
 
   // 시작 전 신발 목록. 신발 등록 화면에서 돌아와도 다시 읽는다.
   // 기본 선택: 마지막으로 고른 신발 → 신발이 하나뿐이면 그 신발 → 선택 안 함
@@ -98,6 +123,7 @@ export default function ActiveRunScreen() {
     setLastPoint(last);
     setRecent(pts);
     setNow(t);
+    void coachTick(db); // 구간이 바뀌었거나 1km를 지났으면 음성 안내
   }, [db, runId]);
 
   useEffect(() => {
@@ -137,9 +163,11 @@ export default function ActiveRunScreen() {
         return;
       }
       setMode(result.mode);
-      const id = await createRun(db, Date.now(), shoeId);
+      const plan = followPlan ? todayPlan : null;
+      const id = await createRun(db, Date.now(), shoeId, plan);
       await setLastShoeId(db, shoeId);
       setRun(await getRun(db, id));
+      void coachTick(db); // 첫 안내 ("준비 걷기 5분으로 시작해요")
     } catch (e) {
       Alert.alert('시작하지 못했어요', String(e));
     } finally {
@@ -209,6 +237,23 @@ export default function ActiveRunScreen() {
           <Header onClose={() => router.back()} />
           <AppText variant="heading">러닝을 시작할까요?</AppText>
           <Card>
+            <AppText variant="title">어떻게 달릴까요?</AppText>
+            {todayPlan ? (
+              <ChoiceButton
+                label={`오늘의 추천 따라 달리기 (총 ${Math.round(todayPlan.totalSec / 60)}분, 구간마다 음성 안내)`}
+                selected={followPlan}
+                onPress={() => setFollowPlan(true)}
+              />
+            ) : (
+              <AppText variant="caption">오늘은 쉬는 날이라 추천 구성이 없어요. 가볍게 달리고 싶다면 자유 러닝으로 기록해요.</AppText>
+            )}
+            <ChoiceButton
+              label="자유 러닝 (1km마다 음성 안내)"
+              selected={!todayPlan || !followPlan}
+              onPress={() => setFollowPlan(false)}
+            />
+          </Card>
+          <Card>
             <AppText variant="title">오늘 신을 신발</AppText>
             {shoes.length > 0 ? (
               <ShoePicker shoes={shoes} selectedId={shoeId} onSelect={chooseShoe} />
@@ -253,6 +298,7 @@ export default function ActiveRunScreen() {
   const elapsed = elapsedSec(run, now);
   const avgPace = averagePaceSecPerKm(run.distanceM, elapsed);
   const curPace = paused ? null : currentPaceSecPerKm(recent, now);
+  const plan = parsePlan(run.planJson);
 
   return (
     <SafeAreaView style={[styles.safe, paused && styles.safePaused]}>
@@ -266,6 +312,8 @@ export default function ActiveRunScreen() {
           </View>
           <GpsSignal last={lastPoint} now={now} paused={paused} />
         </View>
+
+        {plan && <PlanCard plan={plan} elapsed={elapsed} paused={paused} />}
 
         <View style={styles.hero}>
           <AppText variant="hero" accessibilityLabel={`거리 ${formatKm(run.distanceM)} 킬로미터`}>
@@ -296,6 +344,12 @@ export default function ActiveRunScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        <Pressable accessibilityRole="button" onPress={toggleMute} style={styles.mute}>
+          <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={22} color={colors.textSecondary} />
+          <AppText bold color={colors.textSecondary}>
+            {muted ? '음성 안내 꺼짐 (눌러서 켜기)' : '음성 안내 켜짐 (눌러서 끄기)'}
+          </AppText>
+        </Pressable>
         <View style={styles.buttonRow}>
           <View style={styles.flex}>
             <BigButton label={paused ? '다시 시작' : '일시정지'} disabled={busy} onPress={togglePause} />
@@ -313,6 +367,51 @@ export default function ActiveRunScreen() {
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/** 지금 구간(달리기/걷기)과 남은 시간 */
+function PlanCard({ plan, elapsed, paused }: { plan: RunPlan; elapsed: number; paused: boolean }) {
+  const pos = positionAt(plan, elapsed);
+  const progress = Math.min(1, elapsed / plan.totalSec);
+
+  if (pos.done) {
+    return (
+      <View style={[styles.plan, styles.planDone]}>
+        <AppText variant="title">오늘 계획 완료! 🎉</AppText>
+        <AppText>더 달려도 되고, 아래 &quot;끝내기&quot;를 눌러 저장해도 돼요.</AppText>
+      </View>
+    );
+  }
+
+  const s = pos.segment;
+  const isRun = s.kind === 'run';
+  const phaseLabel =
+    s.phase === 'warmup' ? '준비 걷기' : s.phase === 'cooldown' ? '마무리 걷기' : `${s.set} / ${plan.sets}세트`;
+  const next = pos.next
+    ? `다음: ${pos.next.phase === 'cooldown' ? '마무리 걷기' : pos.next.kind === 'run' ? '달리기' : '걷기'} ${Math.round(pos.next.seconds / 60)}분`
+    : '다음: 끝';
+
+  return (
+    <View style={[styles.plan, isRun ? styles.planRun : styles.planWalk]}>
+      <View style={styles.planTop}>
+        <AppText variant="heading" color={isRun ? colors.textOnPrimary : colors.text}>
+          {isRun ? '달리기' : '걷기'}
+        </AppText>
+        <AppText bold color={isRun ? colors.textOnPrimary : colors.textSecondary}>
+          {paused ? '일시정지 중' : phaseLabel}
+        </AppText>
+      </View>
+      <AppText variant="number" color={isRun ? colors.textOnPrimary : colors.text}>
+        {formatDuration(pos.remainingSec)}
+      </AppText>
+      <AppText bold color={isRun ? colors.textOnPrimary : colors.textSecondary}>
+        {next}
+      </AppText>
+      <View style={styles.planTrack}>
+        <View style={[styles.planFill, { width: `${progress * 100}%` }]} />
+      </View>
+    </View>
   );
 }
 
@@ -437,6 +536,45 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  mute: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: 40,
+  },
+  plan: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    gap: spacing.xs,
+  },
+  planRun: {
+    backgroundColor: colors.primary,
+  },
+  planWalk: {
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  planDone: {
+    backgroundColor: colors.primarySoft,
+  },
+  planTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planTrack: {
+    height: 8,
+    marginTop: spacing.sm,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  planFill: {
+    height: '100%',
+    backgroundColor: colors.text,
   },
   cancel: {
     alignItems: 'center',

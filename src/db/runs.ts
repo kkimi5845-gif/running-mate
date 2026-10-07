@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import type { RunPlan } from '@/coach/plan';
 import type { CourseCandidate } from '@/engine/course';
 import { evaluatePoint, type GeoPoint } from '@/location/geo';
 
@@ -14,6 +15,7 @@ export type Run = {
   activeSince: number | null; // 지금 달리는 구간의 시작(ms)
   distanceM: number;
   shoeId: number | null;
+  planJson: string | null; // 음성 코칭 계획 (자유 러닝이면 null)
 };
 
 export type StoredPoint = GeoPoint & {
@@ -43,10 +45,11 @@ type RunRow = {
   active_since: number | null;
   distance_m: number;
   shoe_id: number | null;
+  plan_json: string | null;
 };
 
 const RUN_COLUMNS =
-  'id, status, started_at, ended_at, duration_sec, active_since, distance_m, shoe_id';
+  'id, status, started_at, ended_at, duration_sec, active_since, distance_m, shoe_id, plan_json';
 
 function toRun(r: RunRow): Run {
   return {
@@ -58,6 +61,7 @@ function toRun(r: RunRow): Run {
     activeSince: r.active_since,
     distanceM: r.distance_m,
     shoeId: r.shoe_id,
+    planJson: r.plan_json,
   };
 }
 
@@ -114,10 +118,15 @@ export async function listCourseCandidates(db: SQLiteDatabase): Promise<CourseCa
   }));
 }
 
-export async function createRun(db: SQLiteDatabase, now: number, shoeId: number | null = null): Promise<number> {
+export async function createRun(
+  db: SQLiteDatabase,
+  now: number,
+  shoeId: number | null = null,
+  plan: RunPlan | null = null,
+): Promise<number> {
   const result = await db.runAsync(
-    `INSERT INTO runs (status, started_at, active_since, shoe_id) VALUES ('recording', ?, ?, ?)`,
-    [new Date(now).toISOString(), now, shoeId],
+    `INSERT INTO runs (status, started_at, active_since, shoe_id, plan_json) VALUES ('recording', ?, ?, ?, ?)`,
+    [new Date(now).toISOString(), now, shoeId, plan ? JSON.stringify(plan) : null],
   );
   return result.lastInsertRowId;
 }

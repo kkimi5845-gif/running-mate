@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 
 import { BigButton } from '@/components/BigButton';
 import { CourseCard } from '@/components/CourseCard';
+import { DailyLineCard } from '@/components/DailyLineCard';
 import { Disclaimer } from '@/components/Disclaimer';
 import { MateBubble } from '@/components/MateBubble';
 import { RecommendationCard } from '@/components/RecommendationCard';
@@ -15,6 +16,7 @@ import { loadEngineInput } from '@/engine/loadInput';
 import { recommend } from '@/engine/recommend';
 import type { Recommendation } from '@/engine/types';
 import { formatKm } from '@/location/format';
+import { dailyCategory, pickDailyLine, type LineCategory } from '@/mate/dailyLines';
 import { generateMateMessage } from '@/mate/generateMateMessage';
 import type { MateMessage } from '@/mate/types';
 import { toISODate } from '@/utils/date';
@@ -28,12 +30,15 @@ type HomeState = {
   course: CourseSuggestion | null;
   coursePoints: { latitude: number; longitude: number }[];
   hasHistory: boolean;
+  dayKey: string;
+  lineCategory: LineCategory;
 };
 
 /** 홈 (오늘의 추천): 러닝메이트가 추천 엔진 결과를 말풍선으로 설명한다 */
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const [state, setState] = useState<HomeState | null>(null);
+  const [lineOffset, setLineOffset] = useState(0);
 
   const load = useCallback(async () => {
     const today = new Date();
@@ -65,6 +70,8 @@ export default function HomeScreen() {
       course,
       coursePoints,
       hasHistory: candidates.length > 0,
+      dayKey: todayKey,
+      lineCategory: dailyCategory(rec, unwell),
     });
   }, [db]);
 
@@ -85,6 +92,11 @@ export default function HomeScreen() {
     <Screen title="오늘의 러닝" subtitle="오늘 달릴지, 쉴지, 어떻게 달릴지 알려드려요">
       {state && (
         <>
+          <DailyLineCard
+            line={pickDailyLine(state.lineCategory, state.dayKey, lineOffset)}
+            onNext={() => setLineOffset((n) => n + 1)}
+          />
+
           <MateBubble
             name={state.mate.name}
             tone={state.mate.tone}

@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import * as TaskManager from 'expo-task-manager';
 
+import { coachTick } from '@/coach/coach';
 import { DATABASE_NAME } from '@/db';
 import { ingestLocations, type IncomingLocation } from '@/db/runs';
 import { colors } from '@/theme';
@@ -66,7 +67,11 @@ if (!isExpoGo) {
       console.warn('[tracking] 백그라운드 위치 오류', error.message);
       return;
     }
-    if (data?.locations?.length) await enqueue(data.locations.map(toIncoming));
+    if (data?.locations?.length) {
+      await enqueue(data.locations.map(toIncoming));
+      // 화면이 꺼져 있어도 좌표가 들어올 때마다 음성 안내 시점을 확인한다
+      await coachTick(await getDb());
+    }
   });
 }
 

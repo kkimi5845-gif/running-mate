@@ -3,7 +3,7 @@ import type { Recommendation, ReasonCode } from '@/engine/types';
 import type { Profile } from '@/profile/options';
 
 import { buildMateMessage, generateMateMessage } from '../generateMateMessage';
-import { hasBatchim, withIeyo } from '../korean';
+import { hasBatchim, withEuro, withIeyo } from '../korean';
 import { REASON_LINES } from '../templates';
 
 const profile: Profile = {
@@ -24,6 +24,10 @@ describe('조사', () => {
     expect(withIeyo('달리')).toBe('달리예요');
     expect(withIeyo('민준')).toBe('민준이에요');
     expect(withIeyo('Rio')).toBe('Rio예요');
+    expect(withIeyo('30초')).toBe('30초예요');
+    expect(withEuro('5분')).toBe('5분으로');
+    expect(withEuro('30초')).toBe('30초로');
+    expect(withEuro('1일')).toBe('1일로');
   });
 });
 

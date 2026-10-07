@@ -26,3 +26,8 @@ export function speak(text: string, tone: MateTone, onDone?: () => void): void {
 export function stopSpeaking(): void {
   Speech.stop();
 }
+
+/** 앞의 말을 끊지 않고 이어서 말한다 (달리는 중 안내용) */
+export function speakQueued(text: string, tone: MateTone): void {
+  Speech.speak(text, { language: 'ko-KR', ...VOICE[tone] });
+}
