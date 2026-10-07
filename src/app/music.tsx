@@ -11,6 +11,7 @@ import { deleteMusicFile, pickMusicFiles } from '@/music/files';
 import { previewTrack, stopMusic } from '@/music/player';
 import type { MusicKind, Track } from '@/music/select';
 import { colors, radius, spacing } from '@/theme';
+import { showError } from '@/utils/errors';
 
 const SECTIONS: { kind: MusicKind; title: string; hint: string }[] = [
   { kind: 'walk', title: '걷기 음악', hint: '준비·마무리 걷기와 걷기 구간에 나와요. 잔잔한 곡을 추천해요.' },
@@ -36,7 +37,7 @@ export default function MusicScreen() {
       for (const f of picked) await addTrack(db, kind, f.name, f.uri);
       await load();
     } catch (e) {
-      Alert.alert('음악을 넣지 못했어요', String(e));
+      showError('음악을 넣지 못했어요', e, 'mp3 같은 음악 파일인지 확인하고 다시 골라 주세요.');
     }
   };
 

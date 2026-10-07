@@ -13,6 +13,7 @@ import { parseNumber } from '@/inbody/metrics';
 import { deletePhoto, permissionMessage, pickPhoto, type PickSource } from '@/photos/photo';
 import { DEFAULT_REPLACE_KM } from '@/shoes/status';
 import { colors, fontSize, radius, spacing, touchHeight } from '@/theme';
+import { showError } from '@/utils/errors';
 
 /** 신발 등록·수정 */
 export default function ShoeEditScreen() {
@@ -68,7 +69,7 @@ export default function ShoeEditScreen() {
       if (photoUri && photoUri !== originalPhoto.current) deletePhoto('shoes', photoUri);
       setPhotoUri(result.uri);
     } catch (e) {
-      Alert.alert('사진을 가져오지 못했어요', String(e));
+      showError('사진을 가져오지 못했어요', e);
     }
   };
 
@@ -101,7 +102,7 @@ export default function ShoeEditScreen() {
       router.back();
     } catch (e) {
       setSaving(false);
-      Alert.alert('저장하지 못했어요', String(e));
+      showError('저장하지 못했어요', e);
     }
   };
 

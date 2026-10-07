@@ -26,6 +26,7 @@ import { METRICS, parseNumber, type MetricKey } from '@/inbody/metrics';
 import { deletePhoto, permissionMessage, pickPhoto, type PickSource } from '@/photos/photo';
 import { colors, radius, spacing } from '@/theme';
 import { formatDateLong, fromISODate, toISODate } from '@/utils/date';
+import { showError } from '@/utils/errors';
 
 type Texts = Record<MetricKey, string>;
 
@@ -99,7 +100,7 @@ export default function InbodyEditScreen() {
       if (photoUri && photoUri !== originalPhoto.current) deletePhoto('inbody', photoUri);
       setPhotoUri(result.uri);
     } catch (e) {
-      Alert.alert('사진을 가져오지 못했어요', String(e));
+      showError('사진을 가져오지 못했어요', e);
     }
   };
 
@@ -155,7 +156,7 @@ export default function InbodyEditScreen() {
       router.back();
     } catch (e) {
       setSaving(false);
-      Alert.alert('저장하지 못했어요', '잠시 후 다시 시도해 주세요.\n' + String(e));
+      showError('저장하지 못했어요', e);
     }
   };
 

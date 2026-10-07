@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 
 import { ProfileWizard } from '@/components/ProfileWizard';
 import { getProfile, saveProfile } from '@/db/profile';
 import type { Profile } from '@/profile/options';
+import { showError } from '@/utils/errors';
 
 /** 내 정보 → 프로필 수정: 온보딩과 같은 질문을 이전 답이 선택된 상태로 보여준다. */
 export default function ProfileEditScreen() {
@@ -26,7 +26,7 @@ export default function ProfileEditScreen() {
       router.back();
     } catch (e) {
       setSaving(false);
-      Alert.alert('저장하지 못했어요', '잠시 후 다시 시도해 주세요.\n' + String(e));
+      showError('저장하지 못했어요', e);
     }
   };
 

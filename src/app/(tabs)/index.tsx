@@ -2,13 +2,16 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 
+import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
+import { Card } from '@/components/Card';
 import { CourseCard } from '@/components/CourseCard';
 import { DailyLineCard } from '@/components/DailyLineCard';
 import { JejuCourseCard } from '@/components/JejuCourseCard';
 import { Disclaimer } from '@/components/Disclaimer';
 import { MateBubble } from '@/components/MateBubble';
 import { RecommendationCard } from '@/components/RecommendationCard';
+import { RestDayCard } from '@/components/RestDayCard';
 import { Screen } from '@/components/Screen';
 import { getRunPoints, listCourseCandidates } from '@/db/runs';
 import { getMateSettings, isUnwellToday, setUnwellToday, type MateSettings } from '@/db/settings';
@@ -45,8 +48,9 @@ export default function HomeScreen() {
   const db = useSQLiteContext();
   const [state, setState] = useState<HomeState | null>(null);
   const [lineOffset, setLineOffset] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
-  const load = useCallback(async () => {
+  const compute = useCallback(async () => {
     const today = new Date();
     const todayKey = toISODate(today);
     const [unwell, mate, candidates, here] = await Promise.all([
@@ -87,6 +91,16 @@ export default function HomeScreen() {
     });
   }, [db]);
 
+  // DB를 읽다 문제가 생기면 빈 화면 대신 안내와 "다시 시도" 버튼을 보여 준다
+  const load = useCallback(async () => {
+    try {
+      await compute();
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    }
+  }, [compute]);
+
   // 화면에 돌아올 때마다(러닝을 끝냈거나 설정을 바꿨을 때) 다시 계산한다
   useFocusEffect(
     useCallback(() => {
@@ -102,6 +116,14 @@ export default function HomeScreen() {
 
   return (
     <Screen title="오늘의 러닝" subtitle="오늘 달릴지, 쉴지, 어떻게 달릴지 알려드려요">
+      {loadError && (
+        <Card>
+          <AppText variant="title">오늘의 추천을 불러오지 못했어요</AppText>
+          <AppText variant="caption">잠시 후 다시 시도해 주세요. 계속되면 앱을 완전히 껐다가 다시 열어 주세요.</AppText>
+          <BigButton label="다시 시도" variant="outline" onPress={() => void load()} />
+        </Card>
+      )}
+      {!state && !loadError && <AppText variant="caption">오늘의 추천을 준비하고 있어요…</AppText>}
       {state && (
         <>
           <DailyLineCard
@@ -125,7 +147,12 @@ export default function HomeScreen() {
             />
           )}
 
-          <RecommendationCard rec={state.rec} sessionsPerWeek={state.sessionsPerWeek} />
+          {/* 쉬는 날에는 러닝메이트가 이유를 이미 말했으니, 같은 내용을 되풀이하지 않고 쉬는 법만 보여 준다 */}
+          {state.rec.rest ? (
+            <RestDayCard />
+          ) : (
+            <RecommendationCard rec={state.rec} sessionsPerWeek={state.sessionsPerWeek} />
+          )}
           {!state.rec.rest && (
             <>
               <CourseCard course={state.course} points={state.coursePoints} hasHistory={state.hasHistory} />

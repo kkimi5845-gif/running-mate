@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { BigButton } from '@/components/BigButton';
@@ -13,6 +13,7 @@ import { withIeyo } from '@/mate/korean';
 import { TONE_LABEL, type MateTone } from '@/mate/types';
 import { speak, stopSpeaking } from '@/mate/voice';
 import { colors, fontSize, radius, spacing, touchHeight } from '@/theme';
+import { showError } from '@/utils/errors';
 
 /** 러닝메이트 설정: 이름, 말투, 소리 */
 export default function MateSettingsScreen() {
@@ -39,7 +40,7 @@ export default function MateSettingsScreen() {
       router.back();
     } catch (e) {
       setSaving(false);
-      Alert.alert('저장하지 못했어요', String(e));
+      showError('저장하지 못했어요', e);
     }
   };
 

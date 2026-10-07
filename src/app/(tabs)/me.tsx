@@ -112,7 +112,7 @@ export default function MeScreen() {
         {status ? (
           <AppText variant="caption" color={status.version === LATEST_DB_VERSION ? colors.success : colors.danger}>
             저장 공간: DB 버전 {status.version}
-            {status.version === LATEST_DB_VERSION ? ' ✓ 정상' : ` (최신: ${LATEST_DB_VERSION})`}
+            {status.version === LATEST_DB_VERSION ? ' ✓ 준비됨' : ` (최신: ${LATEST_DB_VERSION})`}
           </AppText>
         ) : null}
       </View>

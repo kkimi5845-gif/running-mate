@@ -20,6 +20,7 @@ import { buildGpx } from '@/location/gpx';
 import { statusMessage } from '@/shoes/status';
 import { colors, spacing } from '@/theme';
 import { formatRunTitle, toISODate } from '@/utils/date';
+import { showError } from '@/utils/errors';
 
 /** 러닝 요약(끝낸 직후) · 상세(목록에서 눌렀을 때) */
 export default function RunDetailScreen() {
@@ -36,18 +37,26 @@ export default function RunDetailScreen() {
 
   useEffect(() => {
     (async () => {
-      setRun(await getRun(db, runId));
-      setPoints(await getRunPoints(db, runId, { onlyUsed: true }));
-      setShoes(await listShoes(db));
+      try {
+        setRun(await getRun(db, runId));
+        setPoints(await getRunPoints(db, runId, { onlyUsed: true }));
+        setShoes(await listShoes(db));
+      } catch {
+        setRun(null); // 읽지 못하면 "찾을 수 없어요" 안내
+      }
     })();
   }, [db, runId]);
 
   const changeShoe = async (shoeId: number | null) => {
-    await setRunShoe(db, runId, shoeId);
-    if (isFresh) await setLastShoeId(db, shoeId); // 방금 끝낸 러닝이면 다음 기본값도 바꾼다
-    setRun(await getRun(db, runId));
-    setShoes(await listShoes(db));
-    setChangingShoe(false);
+    try {
+      await setRunShoe(db, runId, shoeId);
+      if (isFresh) await setLastShoeId(db, shoeId); // 방금 끝낸 러닝이면 다음 기본값도 바꾼다
+      setRun(await getRun(db, runId));
+      setShoes(await listShoes(db));
+      setChangingShoe(false);
+    } catch (e) {
+      showError('신발을 바꾸지 못했어요', e);
+    }
   };
 
   if (run === undefined) return null;
@@ -87,7 +96,7 @@ export default function RunDetailScreen() {
       file.write(gpx);
       await Sharing.shareAsync(file.uri, { mimeType: 'application/gpx+xml', dialogTitle: 'GPX 파일 보내기' });
     } catch (e) {
-      Alert.alert('내보내지 못했어요', String(e));
+      showError('내보내지 못했어요', e);
     } finally {
       setExporting(false);
     }
@@ -100,8 +109,12 @@ export default function RunDetailScreen() {
         text: '지우기',
         style: 'destructive',
         onPress: async () => {
-          await deleteRun(db, run.id);
-          close();
+          try {
+            await deleteRun(db, run.id);
+            close();
+          } catch (e) {
+            showError('기록을 지우지 못했어요', e);
+          }
         },
       },
     ]);

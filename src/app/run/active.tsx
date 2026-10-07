@@ -40,6 +40,7 @@ import { averagePaceSecPerKm, CURRENT_PACE_WINDOW_MS, currentPaceSecPerKm, MAX_A
 import { currentTrackingMode, isExpoGo, startTracking, stopTracking, type TrackingMode } from '@/location/tracking';
 import { colors, radius, spacing } from '@/theme';
 import { toISODate } from '@/utils/date';
+import { showError } from '@/utils/errors';
 
 const KEEP_AWAKE_TAG = 'run-active';
 
@@ -196,7 +197,7 @@ export default function ActiveRunScreen() {
       }
       void coachTick(db); // 첫 안내 ("준비 걷기 5분으로 시작해요")
     } catch (e) {
-      Alert.alert('시작하지 못했어요', String(e));
+      showError('시작하지 못했어요', e);
     } finally {
       setBusy(false);
     }
@@ -237,7 +238,7 @@ export default function ActiveRunScreen() {
             router.replace({ pathname: '/run/[id]', params: { id: String(run.id), fresh: '1' } });
           } catch (e) {
             setBusy(false);
-            Alert.alert('저장하지 못했어요', String(e));
+            showError('저장하지 못했어요', e);
           }
         },
       },

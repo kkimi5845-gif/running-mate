@@ -37,14 +37,20 @@ export default function JejuScreen() {
   const [level, setLevel] = useState<JejuLevel | null>(null); // null = 내 수준 맞춤
   const [locating, setLocating] = useState(false);
   const [locateFailed, setLocateFailed] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     void (async () => {
-      const today = new Date();
-      const unwell = await isUnwellToday(db, toISODate(today));
-      const input = await loadEngineInput(db, today, unwell);
-      if (input) setTarget(jejuTarget(recommend(input), input.profile));
-      setHere(await getHere(false));
+      try {
+        const today = new Date();
+        const unwell = await isUnwellToday(db, toISODate(today));
+        const input = await loadEngineInput(db, today, unwell);
+        if (input) setTarget(jejuTarget(recommend(input), input.profile));
+        else setFailed(true);
+        setHere(await getHere(false));
+      } catch {
+        setFailed(true);
+      }
     })();
   }, [db]);
 
@@ -56,7 +62,15 @@ export default function JejuScreen() {
     setLocating(false);
   }, []);
 
-  if (!target) return null;
+  if (!target) {
+    return (
+      <View style={styles.content}>
+        <AppText variant="caption">
+          {failed ? '코스를 불러오지 못했어요. 뒤로 갔다가 다시 들어와 주세요.' : '코스를 준비하고 있어요…'}
+        </AppText>
+      </View>
+    );
+  }
 
   const result = recommendJejuCourses(JEJU_COURSES, target, { here, area, level });
   const aboveMe = level !== null && level > target.level;
