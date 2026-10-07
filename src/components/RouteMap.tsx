@@ -5,7 +5,6 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import Svg, { Circle, Polyline as SvgPolyline } from 'react-native-svg';
 
 import { AppText } from '@/components/AppText';
-import { isExpoGo } from '@/location/tracking';
 import { colors, radius } from '@/theme';
 
 type LatLng = { latitude: number; longitude: number };
@@ -16,11 +15,12 @@ type Props = {
 };
 
 /**
- * 안드로이드 지도(구글 지도)는 Expo Go 안에서는 바로 쓸 수 있지만,
- * 개발용 빌드·실제 앱에서는 구글 지도 API 키가 있어야 한다.
- * 키가 없으면 지도 대신 경로 모양만 그려서 보여준다.
+ * 안드로이드 지도(구글 지도)는 구글 지도 API 키가 있어야 제대로 그려진다.
+ * (키 없이 쓰면 Expo Go에서도 검은 화면만 나왔다.)
+ * 키를 설정하고 app.json의 extra.hasGoogleMapsKey를 true로 바꾸기 전까지는
+ * 배경 지도 없이 경로 모양만 그려서 보여준다. 인터넷 없이도 보인다.
  */
-const canUseMap = isExpoGo || Constants.expoConfig?.extra?.hasGoogleMapsKey === true;
+const canUseMap = Constants.expoConfig?.extra?.hasGoogleMapsKey === true;
 
 /** 러닝 경로 표시 */
 export function RouteMap({ points, height = 280 }: Props) {

@@ -51,7 +51,7 @@ export function GpsDebugPanel({ runId, distanceM, tick, mode }: Props) {
         {MAX_SPEED_MPS}m/s) {stats.speed} · 중복 {stats.duplicate}
       </AppText>
       <AppText variant="caption">
-        마지막 신호: {last ? `오차 ${last.accuracy?.toFixed(0) ?? '?'}m · ${lastAge}초 전` : '없음'}
+        마지막 신호: {last ? `오차 ${last.accuracy?.toFixed(0) ?? '?'}m${lastAge !== null && lastAge < 600 ? ` · ${lastAge}초 전` : ''}` : '없음'}
       </AppText>
       <AppText variant="caption">
         거리 {distanceM.toFixed(1)}m{mode ? ` · 기록 방식 ${mode}` : ''}
