@@ -23,6 +23,7 @@ import { Disclaimer } from '@/components/Disclaimer';
 import { NumberField } from '@/components/NumberField';
 import { deleteInbody, getInbody, insertInbody, latestInbody, updateInbody } from '@/db/inbody';
 import { METRICS, parseNumber, type MetricKey } from '@/inbody/metrics';
+import { canReadPhoto, readInbodyPhoto } from '@/inbody/readPhoto';
 import { deletePhoto, permissionMessage, pickPhoto, type PickSource } from '@/photos/photo';
 import { colors, radius, spacing } from '@/theme';
 import { formatDateLong, fromISODate, toISODate } from '@/utils/date';
@@ -48,6 +49,8 @@ export default function InbodyEditScreen() {
   const [showIOSDate, setShowIOSDate] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [autoFilled, setAutoFilled] = useState<MetricKey[]>([]);
 
   // 화면을 떠날 때 저장하지 않은 새 사진 파일을 정리하기 위해 기억해 둔다.
   const originalPhoto = useRef<string | null>(null);
@@ -101,6 +104,40 @@ export default function InbodyEditScreen() {
       setPhotoUri(result.uri);
     } catch (e) {
       showError('사진을 가져오지 못했어요', e);
+    }
+  };
+
+  /** 결과지 사진에서 숫자를 읽어 입력칸을 채운다. 찾은 항목만 바꾸고, 사용자가 확인 후 저장한다. */
+  const readFromPhoto = async () => {
+    if (!photoUri) return;
+    setReading(true);
+    try {
+      const found = await readInbodyPhoto(photoUri);
+      const keys = METRICS.map((m) => m.key).filter((k) => found[k] !== undefined);
+      if (keys.length === 0) {
+        Alert.alert(
+          '숫자를 찾지 못했어요',
+          '결과지가 화면에 꽉 차게, 밝은 곳에서 흔들리지 않게 다시 찍어 보세요. 직접 입력해도 괜찮아요.',
+        );
+        return;
+      }
+      setTexts((prev) => {
+        const next = { ...prev };
+        for (const k of keys) next[k] = String(found[k]);
+        return next;
+      });
+      setErrors({});
+      setAutoFilled(keys);
+      const labels = METRICS.filter((m) => keys.includes(m.key)).map((m) => m.label);
+      Alert.alert(
+        `${labels.length}개 항목을 채웠어요`,
+        `${labels.join(', ')}
+사진에서 읽은 값은 틀릴 수 있어요. 결과지와 같은지 꼭 확인한 뒤 저장해 주세요.`,
+      );
+    } catch (e) {
+      showError('사진에서 숫자를 읽지 못했어요', e, '직접 입력해 주세요.');
+    } finally {
+      setReading(false);
     }
   };
 
@@ -202,6 +239,17 @@ export default function InbodyEditScreen() {
                   사진을 누르면 크게 볼 수 있어요
                 </AppText>
               </Pressable>
+              {canReadPhoto ? (
+                <BigButton
+                  label={reading ? '사진을 읽는 중…' : '사진에서 숫자 읽기'}
+                  disabled={reading}
+                  onPress={readFromPhoto}
+                />
+              ) : (
+                <AppText variant="caption">
+                  사진에서 숫자를 자동으로 읽는 기능은 러닝메이트 앱(개발용 빌드)에서 쓸 수 있어요.
+                </AppText>
+              )}
               <View style={styles.buttonRow}>
                 <View style={styles.flex}>
                   <BigButton label="다른 사진" variant="outline" onPress={() => addPhoto('library')} />
@@ -214,7 +262,7 @@ export default function InbodyEditScreen() {
           ) : (
             <>
               <AppText variant="caption">
-                사진은 이 휴대폰 안에만 저장돼요. 사진을 보면서 아래 숫자를 입력해 주세요.
+                사진은 이 휴대폰 안에만 저장돼요. 사진을 보면서 아래 숫자를 입력하거나, 사진에서 숫자를 읽어 올 수 있어요.
               </AppText>
               <View style={styles.buttonRow}>
                 <View style={styles.flex}>
@@ -258,6 +306,12 @@ export default function InbodyEditScreen() {
         {/* 수치 */}
         <Card>
           <AppText variant="title">수치 (모두 선택 입력)</AppText>
+          {autoFilled.length > 0 && (
+            <AppText variant="caption" color={colors.text}>
+              사진에서 읽은 값: {METRICS.filter((m) => autoFilled.includes(m.key)).map((m) => m.label).join(', ')}
+              {'\n'}결과지와 같은지 확인해 주세요.
+            </AppText>
+          )}
           {METRICS.map((m) => (
             <NumberField
               key={m.key}
@@ -265,7 +319,10 @@ export default function InbodyEditScreen() {
               unit={m.unit}
               value={texts[m.key]}
               error={errors[m.key]}
-              onChangeText={(t) => setTexts((prev) => ({ ...prev, [m.key]: t }))}
+              onChangeText={(t) => {
+                setTexts((prev) => ({ ...prev, [m.key]: t }));
+                setAutoFilled((prev) => prev.filter((k) => k !== m.key));
+              }}
             />
           ))}
         </Card>
